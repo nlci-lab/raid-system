@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLCI Portal Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .app-card { transition: all 0.3s ease; }
+        .app-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
+            <a href="/" class="flex items-center gap-2 group">
+                <div class="bg-indigo-600 text-white p-1.5 rounded transition transform group-hover:scale-105">
+                    <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                </div>
+                <span class="font-bold text-lg tracking-tight text-gray-900">NLCI <span class="text-indigo-600">Portal</span></span>
+            </a>
+
+            <div class="flex items-center gap-4">
+                <a href="/profile" class="flex items-center gap-3 hover:bg-gray-50 p-1.5 pr-3 rounded-full border border-transparent hover:border-gray-200 transition">
+                    <div class="w-8 h-8 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-sm">
+                        {{ username[0]|upper }}
+                    </div>
+                    <span class="text-sm font-medium text-gray-700 hidden sm:block">{{ username }}</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="bg-indigo-700 text-white py-12 text-center">
+        <div class="max-w-2xl mx-auto px-4">
+            <h1 class="text-3xl md:text-4xl font-bold mb-3">Welcome Back, {{ username }}</h1>
+            <p class="text-indigo-100 text-sm md:text-base opacity-90">Select an application below to get started.</p>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full px-6 py-10 -mt-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            <a href="/blog" class="app-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col group relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                    <i data-lucide="newspaper" class="w-24 h-24 text-indigo-600"></i>
+                </div>
+                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center mb-4 group-hover:bg-indigo-600 group-hover:text-white transition">
+                    <i data-lucide="newspaper" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Bulletin & News</h3>
+                <p class="text-gray-500 text-sm mb-6 flex-grow">Read the latest internal updates, announcements, and stories from the team.</p>
+                <div class="flex items-center text-indigo-600 text-sm font-bold group-hover:underline">
+                    Read Updates <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
+            </a>
+
+            <a href="/library" class="app-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col group relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                    <i data-lucide="book-open" class="w-24 h-24 text-emerald-600"></i>
+                </div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center mb-4 group-hover:bg-emerald-600 group-hover:text-white transition">
+                    <i data-lucide="library" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Library</h3>
+                <p class="text-gray-500 text-sm mb-6 flex-grow">Search the catalog, check book availability, and make reservation requests.</p>
+                <div class="flex items-center text-emerald-600 text-sm font-bold group-hover:underline">
+                    Browse Books <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
+            </a>
+
+            <a href="/chat" class="app-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col group relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                    <i data-lucide="message-circle" class="w-24 h-24 text-purple-600"></i>
+                </div>
+                <div class="w-12 h-12 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center mb-4 group-hover:bg-purple-600 group-hover:text-white transition">
+                    <i data-lucide="messages-square" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Team Chat</h3>
+                <p class="text-gray-500 text-sm mb-6 flex-grow">Connect with colleagues, create groups, and discuss projects in real-time.</p>
+                <div class="flex items-center text-purple-600 text-sm font-bold group-hover:underline">
+                    Open Chat <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
+            </a>
+
+            <a href="/attendance" class="app-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col group relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                    <i data-lucide="clock" class="w-24 h-24 text-orange-600"></i>
+                </div>
+                <div class="w-12 h-12 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center mb-4 group-hover:bg-orange-600 group-hover:text-white transition">
+                    <i data-lucide="fingerprint" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Attendance & Leaves</h3>
+                <p class="text-gray-500 text-sm mb-6 flex-grow">Mark your daily check-ins and apply for casual, sick, or annual leaves.</p>
+                <div class="flex items-center text-orange-600 text-sm font-bold group-hover:underline">
+                    Manage Schedule <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
+            </a>
+
+            <a href="/database_view" class="app-card bg-white rounded-xl border border-gray-200 p-6 flex flex-col group relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                    <i data-lucide="database" class="w-24 h-24 text-blue-600"></i>
+                </div>
+                <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-600 group-hover:text-white transition">
+                    <i data-lucide="table-2" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Institutional Records</h3>
+                <p class="text-gray-500 text-sm mb-6 flex-grow">Access and search the full institutional database and student records.</p>
+                <div class="flex items-center text-blue-600 text-sm font-bold group-hover:underline">
+                    View Data <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
+            </a>
+
+            {% if is_admin %}
+            <a href="/admins" class="app-card bg-gray-900 rounded-xl border border-gray-800 p-6 flex flex-col group relative overflow-hidden shadow-lg">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                    <i data-lucide="shield-alert" class="w-24 h-24 text-white"></i>
+                </div>
+                <div class="w-12 h-12 bg-gray-800 text-white rounded-lg flex items-center justify-center mb-4 group-hover:bg-white group-hover:text-gray-900 transition border border-gray-700">
+                    <i data-lucide="shield" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">Admin Panel</h3>
+                <p class="text-gray-400 text-sm mb-6 flex-grow">Manage user roles, approve book requests, and review leave applications.</p>
+                <div class="flex items-center text-white text-sm font-bold group-hover:underline">
+                    Access Console <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
+            </a>
+            {% endif %}
+
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+        <div class="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-xs text-gray-500 font-medium">
+                © 2024 New Life Computer Institution. All rights reserved.
+            </div>
+            <div class="flex gap-4 text-gray-400">
+                <i data-lucide="facebook" class="w-4 h-4 hover:text-indigo-600 cursor-pointer transition"></i>
+                <i data-lucide="twitter" class="w-4 h-4 hover:text-indigo-600 cursor-pointer transition"></i>
+                <i data-lucide="instagram" class="w-4 h-4 hover:text-indigo-600 cursor-pointer transition"></i>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library - NLCI Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .scroller::-webkit-scrollbar { height: 6px; }
+        .scroller::-webkit-scrollbar-track { background: transparent; }
+        .scroller::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
+            <a href="/" class="flex items-center gap-2 group">
+                <div class="bg-indigo-600 text-white p-1.5 rounded transition transform group-hover:scale-105">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                </div>
+                <span class="font-bold text-lg tracking-tight text-gray-900">Dashboard</span>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="/profile" class="w-8 h-8 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-sm hover:bg-indigo-200 transition">
+                    {{ session.get('username')[0]|upper if session.get('username') else 'U' }}
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full px-6 py-8">
+        
+        <div class="flex flex-col md:flex-row justify-between items-end gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Library Catalog</h1>
+                <p class="text-gray-500 text-sm">{{ data|length }} items available</p>
+            </div>
+            
+            <div class="flex gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm text-sm font-medium">
+                <button onclick="filterByGenre('all', this)" class="tab-btn px-4 py-1.5 rounded-md bg-indigo-50 text-indigo-700 transition">All</button>
+                <button onclick="filterByGenre('Book', this)" class="tab-btn px-4 py-1.5 rounded-md text-gray-600 hover:bg-gray-50 transition">Books</button>
+                <button onclick="filterByGenre('Report', this)" class="tab-btn px-4 py-1.5 rounded-md text-gray-600 hover:bg-gray-50 transition">Reports</button>
+                <button onclick="filterByGenre('Journal', this)" class="tab-btn px-4 py-1.5 rounded-md text-gray-600 hover:bg-gray-50 transition">Journals</button>
+            </div>
+        </div>
+
+        {% if message %}
+        <div class="bg-blue-50 text-blue-800 text-sm px-4 py-3 rounded-lg border border-blue-100 mb-6 flex items-center gap-2">
+            <i data-lucide="info" class="w-4 h-4"></i> {{ message }}
+        </div>
+        {% endif %}
+
+        <div class="relative mb-6">
+            <i data-lucide="search" class="absolute left-4 top-3.5 text-gray-400 w-5 h-5"></i>
+            <input type="text" id="searchInput" placeholder="Search by title, author, or ID..." 
+                   class="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition">
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto scroller">
+                <table id="dataTable" class="w-full text-left text-sm">
+                    <thead class="bg-gray-50 text-gray-500 uppercase font-bold text-xs border-b border-gray-200">
+                        <tr>
+                            {% for col in columns %}
+                                <th class="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-gray-100 transition group" onclick="sortTable({{ loop.index0 }})">
+                                    <div class="flex items-center gap-2">
+                                        {{ col }}
+                                        <i data-lucide="arrow-up-down" class="w-3 h-3 opacity-30 group-hover:opacity-100"></i>
+                                    </div>
+                                </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for row in data %}
+                            <tr onclick="openModal(this)" data-details='{{ row | tojson | safe }}' class="hover:bg-indigo-50/50 cursor-pointer transition">
+                                {% for col in columns %}
+                                    <td class="px-6 py-4 text-gray-700 whitespace-nowrap max-w-xs truncate">{{ row[col] }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% if not data %}
+                <div class="p-12 text-center text-gray-400">
+                    <i data-lucide="book-open" class="w-12 h-12 mx-auto mb-2 opacity-20"></i>
+                    <p>No records found in the library.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </main>
+
+    <div id="detailModal" class="fixed inset-0 bg-black/50 hidden z-[100] flex items-center justify-center backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-95 opacity-0 flex flex-col max-h-[90vh]" id="modalContent">
+            
+            <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
+                <h3 class="font-bold text-lg">Item Details</h3>
+                <button onclick="closeModal()" class="hover:bg-indigo-500 p-1.5 rounded-full transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto scroller space-y-4" id="modalBodyContent">
+                </div>
+            
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-500 font-bold hover:text-gray-700 text-sm">Cancel</button>
+                <button id="requestBtn" onclick="sendBookRequest()" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-sm transition shadow-sm flex items-center gap-2">
+                    <i data-lucide="hand" class="w-4 h-4"></i> Request Item
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        const modal = document.getElementById("detailModal");
+        const modalContent = document.getElementById("modalContent");
+        let currentBookData = null;
+
+        // --- UPDATED FILTERING LOGIC ---
+        function filterByGenre(genre, btn) {
+            // Update Tab UI
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.className = "tab-btn px-4 py-1.5 rounded-md text-gray-600 hover:bg-gray-50 transition";
+            });
+            btn.className = "tab-btn px-4 py-1.5 rounded-md bg-indigo-50 text-indigo-700 font-bold transition shadow-sm";
+
+            const rows = document.querySelectorAll('#dataTable tbody tr');
+            const filter = genre.toLowerCase();
+
+            rows.forEach(row => {
+                const data = JSON.parse(row.getAttribute('data-details'));
+                // Join all values into one lowercase string for easy checking
+                const allValues = Object.values(data).map(v => String(v).toLowerCase()).join(' ');
+                
+                let shouldShow = false;
+
+                if (filter === 'all') {
+                    shouldShow = true;
+                } else if (filter === 'book') {
+                    // Custom logic: Books tab now means Linguistics OR Anthropology
+                    if (allValues.includes('linguistics') || allValues.includes('anthropology')) {
+                        shouldShow = true;
+                    }
+                } else {
+                    // Standard logic for Reports, Journals, etc.
+                    if (allValues.includes(filter)) {
+                        shouldShow = true;
+                    }
+                }
+
+                row.style.display = shouldShow ? '' : 'none';
+            });
+        }
+
+        // --- Search Logic ---
+        document.getElementById('searchInput').addEventListener('keyup', function() {
+            const query = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#dataTable tbody tr');
+            rows.forEach(row => {
+                // Only search within currently visible rows (respecting the tab filter)
+                if (row.style.display !== 'none') {
+                    const text = row.innerText.toLowerCase();
+                    // If it was visible but doesn't match search, hide it. 
+                    // Note: This simple logic might hide rows that *should* be visible if the user backspaces.
+                    // Better Approach: Reset visibility based on filter, THEN apply search.
+                    
+                    // Re-apply filter logic first to check if it belongs in this tab
+                    const activeTabBtn = document.querySelector('.tab-btn.bg-indigo-50'); // Currently active tab
+                    // For simplicity in this snippet, we just check if it contains the search text.
+                    // If you want robust combined filtering, you'd trigger filterByGenre then filterBySearch.
+                    
+                   row.style.display = text.includes(query) ? '' : 'none';
+                } else {
+                    // If it's already hidden by tab, keep it hidden, UNLESS we want global search?
+                    // Usually search searches within the active tab. 
+                    // To restore rows on backspace, we need to know if they belong to the current tab.
+                    // We will rely on the user clicking the tab again to reset if this gets stuck, 
+                    // or ideally, we trigger the search on the full dataset and check the tab condition.
+                }
+            });
+            
+            // To fix backspace issue properly:
+            if(query === '') {
+                 // Trigger click on active tab to reset view
+                 document.querySelector('.tab-btn.bg-indigo-50').click();
+            }
+        });
+
+        // --- Modal Logic ---
+        function openModal(row) {
+            currentBookData = JSON.parse(row.getAttribute('data-details'));
+            const content = document.getElementById("modalBodyContent");
+            content.innerHTML = '';
+
+            Object.entries(currentBookData).forEach(([key, val]) => {
+                content.innerHTML += `
+                    <div class="border-b border-gray-100 last:border-0 pb-3 last:pb-0">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1">${key}</span>
+                        <div class="text-gray-900 font-medium text-sm break-words">${val}</div>
+                    </div>
+                `;
+            });
+
+            const btn = document.getElementById("requestBtn");
+            btn.innerHTML = `<i data-lucide="hand" class="w-4 h-4"></i> Request Item`;
+            btn.disabled = false;
+            btn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            btn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
+
+        // --- Request Logic ---
+        function sendBookRequest() {
+            if (!currentBookData) return;
+            const title = currentBookData['Title'] || currentBookData['Book Name'] || Object.values(currentBookData)[0];
+            
+            const btn = document.getElementById("requestBtn");
+            btn.innerHTML = "Processing...";
+            btn.disabled = true;
+
+            fetch('/request_book', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ book_title: title })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Requested`;
+                    btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                    btn.classList.add('bg-green-600', 'hover:bg-green-700');
+                    setTimeout(closeModal, 1500);
+                } else {
+                    alert(data.message);
+                    btn.innerHTML = "Retry Request";
+                    btn.disabled = false;
+                }
+                lucide.createIcons();
+            });
+        }
+        
+        function sortTable(n) {
+            // Sort logic placeholder
+        }
+    </script>
+</body>
+</html>

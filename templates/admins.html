@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - NLCI Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab-active { border-bottom: 2px solid #4f46e5; color: #4f46e5; font-weight: 700; }
+        .tab-inactive { border-bottom: 2px solid transparent; color: #6b7280; }
+        .tab-inactive:hover { color: #374151; border-color: #d1d5db; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex justify-between items-center">
+            <a href="/" class="flex items-center gap-2 group">
+                <div class="bg-gray-900 text-white p-1.5 rounded transition transform group-hover:scale-105">
+                    <i data-lucide="shield" class="w-5 h-5"></i>
+                </div>
+                <span class="font-bold text-lg tracking-tight text-gray-900">Admin <span class="text-indigo-600">Console</span></span>
+            </a>
+            <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+                <a href="/" class="hover:text-indigo-600 transition">Back to App</a>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="w-8 h-8 bg-gray-200 text-gray-700 rounded-full flex items-center justify-center font-bold text-sm">
+                    {{ session.get('username')[0]|upper if session.get('username') else 'A' }}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full px-6 py-10">
+        <div class="flex gap-8 mb-8 border-b border-gray-200">
+            <button onclick="switchTab('requests')" id="tab-requests" class="tab-active pb-3 text-sm transition flex items-center gap-2">
+                <i data-lucide="book-open" class="w-4 h-4"></i> Book Requests
+            </button>
+            <button onclick="switchTab('users')" id="tab-users" class="tab-inactive pb-3 text-sm transition flex items-center gap-2">
+                <i data-lucide="users" class="w-4 h-4"></i> Users
+            </button>
+            <button onclick="switchTab('leaves')" id="tab-leaves" class="tab-inactive pb-3 text-sm transition flex items-center gap-2">
+                <i data-lucide="calendar" class="w-4 h-4"></i> Leave Approvals
+            </button>
+        </div>
+
+        <div id="content-requests" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <h2 class="font-bold text-gray-900">Pending Book Requests</h2>
+                <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-full">{{ requests|length }} Total</span>
+            </div>
+            {% if requests %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-50 text-gray-500 uppercase font-bold text-xs border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-3">Date</th>
+                            <th class="px-6 py-3">Book Title</th>
+                            <th class="px-6 py-3">Requested By</th>
+                            <th class="px-6 py-3">Status</th>
+                            <th class="px-6 py-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for req in requests|reverse %}
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ req.request_date }}</td>
+                            <td class="px-6 py-4 font-medium text-gray-900">{{ req.book_title }}</td>
+                            <td class="px-6 py-4">
+                                <div class="font-bold text-gray-900">{{ req.username }}</div>
+                                <div class="text-xs text-gray-400">{{ req.email }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if req.status == 'pending' %}
+                                    <span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded">Pending</span>
+                                {% elif req.status == 'issued' %}
+                                    <span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">Issued</span>
+                                {% elif req.status == 'returned' %}
+                                    <span class="bg-gray-100 text-gray-800 text-xs font-bold px-2 py-1 rounded">Returned</span>
+                                {% else %}
+                                    <span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">{{ req.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                <form action="/admin/update_status" method="POST" class="flex items-center gap-2">
+                                    <input type="hidden" name="email" value="{{ req.email }}">
+                                    <input type="hidden" name="book_title" value="{{ req.book_title }}">
+                                    {% if req.status == 'pending' %}
+                                        <button type="submit" name="status" value="issued" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow-sm transition">Issue</button>
+                                        <button type="submit" name="status" value="rejected" class="text-red-500 hover:text-red-700 text-xs font-bold px-2">Reject</button>
+                                    {% elif req.status == 'issued' %}
+                                        <button type="submit" name="status" value="returned" class="bg-gray-600 hover:bg-gray-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow-sm transition">Mark Returned</button>
+                                    {% endif %}
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-12 text-center text-gray-400"><p>No book requests found.</p></div>
+            {% endif %}
+        </div>
+
+        <div id="content-users" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+             <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <h2 class="font-bold text-gray-900">User Management</h2>
+                <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-2.5 py-0.5 rounded-full">{{ users|length }} Users</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-50 text-gray-500 uppercase font-bold text-xs border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-3">Username</th>
+                            <th class="px-6 py-3">Email</th>
+                            <th class="px-6 py-3">Role</th>
+                            <th class="px-6 py-3">Edit</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for u in users %}
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4 font-bold text-gray-900">{{ u.username }}</td>
+                            <td class="px-6 py-4 text-gray-600">{{ u.email }}</td>
+                            <td class="px-6 py-4">
+                                <span class="bg-gray-100 text-gray-800 text-xs font-bold px-2 py-1 rounded border border-gray-200 uppercase">{{ u.type }}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <form action="/admin/update_role" method="POST" class="flex gap-2">
+                                    <input type="hidden" name="email" value="{{ u.email }}">
+                                    <select name="role" class="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:border-indigo-500">
+                                        <option value="user" {% if u.type == 'user' %}selected{% endif %}>User</option>
+                                        <option value="tester" {% if u.type == 'tester' %}selected{% endif %}>Tester</option>
+                                        <option value="admin" {% if u.type == 'admin' %}selected{% endif %}>Admin</option>
+                                    </select>
+                                    <button type="submit" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold">Save</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="content-leaves" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <h2 class="font-bold text-gray-900">Leave Requests</h2>
+                <span class="bg-orange-100 text-orange-800 text-xs font-bold px-2.5 py-0.5 rounded-full">{{ leaves|length }} Requests</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-50 text-gray-500 uppercase font-bold text-xs border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-3">Employee</th>
+                            <th class="px-6 py-3">Type</th>
+                            <th class="px-6 py-3">Details</th>
+                            <th class="px-6 py-3">Status</th>
+                            <th class="px-6 py-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for leave in leaves|reverse %}
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4">
+                                <span class="font-bold text-gray-900">{{ leave.username }}</span><br/>
+                                <span class="text-xs text-gray-500">{{ leave.email }}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold">{{ leave.type }}</span>
+                            </td>
+                            <td class="px-6 py-4 text-gray-600">
+                                <div class="text-xs font-bold text-gray-400 uppercase mb-1">{{ leave.start_date }} <span class="lowercase">to</span> {{ leave.end_date }}</div>
+                                <span class="text-gray-900 font-medium">{{ leave.reason }}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if leave.status == 'approved' %}
+                                    <span class="text-green-600 font-bold text-xs">Approved</span>
+                                {% elif leave.status == 'rejected' %}
+                                    <span class="text-red-600 font-bold text-xs">Rejected</span>
+                                {% else %}
+                                    <span class="text-yellow-600 font-bold text-xs">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if leave.status == 'pending' %}
+                                <form action="/admin/update_leave" method="POST" class="flex gap-2">
+                                    <input type="hidden" name="leave_id" value="{{ leave.id }}">
+                                    <button name="status" value="approved" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow-sm">Approve</button>
+                                    <button name="status" value="rejected" class="bg-white hover:bg-red-50 text-red-600 text-xs font-bold px-3 py-1.5 rounded border border-red-200">Reject</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if not leaves %}
+            <div class="p-12 text-center text-gray-400"><p>No leave requests found.</p></div>
+            {% endif %}
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+        function switchTab(tabName) {
+            ['requests', 'users', 'leaves'].forEach(t => {
+                document.getElementById('content-' + t).classList.add('hidden');
+                document.getElementById('tab-' + t).className = "tab-inactive pb-3 text-sm transition flex items-center gap-2";
+            });
+            document.getElementById('content-' + tabName).classList.remove('hidden');
+            document.getElementById('tab-' + tabName).className = "tab-active pb-3 text-sm transition flex items-center gap-2";
+        }
+    </script>
+</body>
+</html>

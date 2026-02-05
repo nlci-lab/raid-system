@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, session, redirect, url_for
+from flask import Blueprint, render_template, jsonify, session, redirect, url_for, abort
 import pandas as pd
 
 # Define Blueprint
@@ -12,6 +12,8 @@ def index():
     # 1. Security Check
     if not session.get("verified"):
         return redirect(url_for("auth.login"))
+    
+    if session.get("type") not in ["admin", "tester"]: abort(403)
 
     try:
         # 2. Fetch Data using Pandas

@@ -51,9 +51,13 @@
             <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                 <h2 class="font-bold text-gray-900">Pending Book Requests</h2>
                 <div class="flex items-center gap-4">
-                    <button onclick="window.location.reload();" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 hover:text-indigo-600 transition shadow-sm">
-                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh Book Data
-                    </button>
+                    <form action="/admin/refresh_books" method="POST">
+                        <button type="submit"
+                            class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 hover:text-indigo-600 transition shadow-sm">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                            Refresh Book Data
+                        </button>
+                    </form>
                     <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-full">{{ requests|length }} Total</span>
                 </div>
             </div>

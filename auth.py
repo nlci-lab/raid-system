@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session
 import secrets
 import smtplib
-import time
+import time,json
 
 import database
 
@@ -11,8 +11,8 @@ auth_bp = Blueprint('auth', __name__)
 def login():
     error = None
     data = database.load_data()
-    email_id = open("db/pass.json").read()['email_id']
-    passcode = open("db/pass.json").read()['passcode']
+    email_id = json.load(open('db/pass.json', 'r'))['email_id']
+    passcode = json.load(open('db/pass.json', 'r'))['passcode']
 
     step = session.get('login_step', 'email')
 
@@ -29,13 +29,13 @@ def login():
                 otp = f"{secrets.randbelow(1_000_000):06d}"
 
                 # find USER
-                user = next((u for u in data['users'] if u.get("email") == email), None)
+                user = next((u for u in data['users'] if u.get("email") == email), [])
 
                 # OLD USER: update OTP and reset verification. NEW USER: create with OTP and unverified status
                 if user:
                     user["otp"] = otp
                     user["verified"] = False # Force re-verification on every login attempt
-                
+
                 # New user flow
                 else:
                     user = {
@@ -73,7 +73,7 @@ def login():
             otp_input = request.form.get("otp", "").strip()
             temp_email = session.get('temp_email')
 
-            user = next((u for u in data['users'] if u.get("email") == temp_email), None)
+            user = next((u for u in data['users'] if u.get("email") == temp_email), [])
 
             if user and user.get('otp') == otp_input:
                 # Update database: mark as verified and clear the used OTP

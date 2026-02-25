@@ -4,10 +4,10 @@ from flask import Flask, json, render_template, session, redirect, url_for, requ
 from auth import auth_bp
 from library import lib_bp
 from admins import admin_bp
-from blog import blog_bp 
-from chat import chat_bp 
-from database_view import db_view_bp 
-from attendance import attendance_bp 
+from blog import blog_bp
+from chat import chat_bp
+from database_view import db_view_bp
+from attendance import attendance_bp
 
 with open('db/pass.json') as f:
     config = json.load(f)
@@ -17,7 +17,7 @@ with open('db/pass.json') as f:
 
 
 app = Flask(__name__)
-app.secret_key = open('db/pass.json').read()['secret_key']
+app.secret_key = json.load(open('db/pass.json', 'r'))['secret_key']
 
 # Register Blueprints
 app.register_blueprint(auth_bp)
@@ -37,23 +37,23 @@ def index():
     is_admin = session.get('type') in ['admin', 'tester']
 
     return render_template(
-        "index.html", 
+        "index.html",
         username=session.get('username'),
         is_admin=is_admin
     )
 
 # ==========================================
-#  GLOBAL DARK MODE INJECTOR 
+#  GLOBAL DARK MODE INJECTOR
 # ==========================================
 @app.after_request
 def inject_dark_mode(response):
     if response.mimetype == 'text/html':
-        
+
         dark_mode_code = """
         <style>
             /* 1. Global Defaults */
             html.dark body { background-color: #111827 !important; color: #f3f4f6 !important; }
-            
+
             /* 2. TAILWIND CLASS OVERRIDES */
             html.dark .bg-white { background-color: #1f2937 !important; border-color: #374151 !important; color: #f3f4f6 !important; }
             html.dark .bg-gray-50, html.dark .bg-gray-100 { background-color: #111827 !important; }
@@ -64,21 +64,21 @@ def inject_dark_mode(response):
             html.dark .border-gray-200, html.dark .border-gray-100 { border-color: #374151 !important; }
 
             /* 3. LIBRARY & TABLE FIXES */
-            html.dark .table-wrapper { 
-                background-color: #1f2937 !important; 
-                border-color: #374151 !important; 
+            html.dark .table-wrapper {
+                background-color: #1f2937 !important;
+                border-color: #374151 !important;
                 box-shadow: none !important;
             }
-            
+
             html.dark table { background-color: #1f2937 !important; }
             html.dark tr { background-color: #1f2937 !important; color: #e5e7eb !important; }
             html.dark td { border-color: #374151 !important; color: #e5e7eb !important; }
             html.dark tbody tr:hover { background-color: #374151 !important; }
-            
-            html.dark input, html.dark select, html.dark textarea { 
-                background-color: #374151 !important; 
-                border-color: #4b5563 !important; 
-                color: white !important; 
+
+            html.dark input, html.dark select, html.dark textarea {
+                background-color: #374151 !important;
+                border-color: #4b5563 !important;
+                color: white !important;
             }
             html.dark input::placeholder { color: #9ca3af !important; }
 
@@ -86,7 +86,7 @@ def inject_dark_mode(response):
             html.dark .detail-item { border-bottom-color: #374151 !important; }
             html.dark .detail-value { color: #f3f4f6 !important; }
             html.dark .detail-label { color: #9ca3af !important; }
-            
+
             #dm-toggle {
                 position: fixed; bottom: 20px; right: 20px;
                 width: 50px; height: 50px;
@@ -129,7 +129,7 @@ def inject_dark_mode(response):
 
             const savedTheme = localStorage.getItem('theme');
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            
+
             if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
                 applyTheme(true);
             } else {
@@ -137,12 +137,12 @@ def inject_dark_mode(response):
             }
         </script>
         """
-        
+
         data = response.get_data(as_text=True)
         if "</body>" in data:
             data = data.replace("</body>", dark_mode_code + "</body>")
             response.set_data(data)
-            
+
     return response
 
 if __name__ == "__main__":

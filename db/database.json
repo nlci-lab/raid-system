@@ -1,1 +1,17 @@
-{}
+{
+    "users": [
+        {
+            "email": "martin_mathew@nlife.in",
+            "username": "martin_mathew",
+            "type": "user",
+            "otp": "911309",
+            "verified": false
+        }
+    ],
+    "externals": [],
+    "flp": [],
+    "requests": [],
+    "attendance": [],
+    "leave_requests": [],
+    "chat": []
+}

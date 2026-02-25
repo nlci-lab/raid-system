@@ -1,3 +1,5 @@
+import os
+
 from flask import Blueprint, render_template, session, abort, request, redirect, url_for, flash
 import pandas as pd
 import csv,json
@@ -60,6 +62,19 @@ def refresh_books():
         writer.writerows(data)
 
     return redirect(url_for('admin.dashboard'))
+
+@admin_bp.route("/admin/backup", methods=["POST"])
+def backup_data():
+    if session.get("type") != "admin" and session.get("type") != "tester": abort(403)
+
+    count = os.listdir("db/backups")+1
+
+    db_data = database.load_data()
+    with open(f"backup{count}.json", "w") as f:
+        json.dump(db_data, f, indent=4)
+    
+    return redirect(url_for('admin.dashboard'))
+        
 
 # --- USER MANAGEMENT: UPDATE USER ROLE ---
 @admin_bp.route("/admin/update_role", methods=["POST"])

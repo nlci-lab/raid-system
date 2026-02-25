@@ -58,6 +58,13 @@
                             Refresh Book Data
                         </button>
                     </form>
+                    <form action="/admin/backup" method="POST">
+                        <button type="submit"
+                            class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 hover:text-indigo-600 transition shadow-sm">
+                            <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                            Backup Data
+                        </button>
+                    </form>
                     <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-full">{{ requests|length }} Total</span>
                 </div>
             </div>

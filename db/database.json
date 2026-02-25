@@ -1,7 +1,43 @@
 {
+<<<<<<< Updated upstream
     "users": [],
     "externals": [],
     "flp": [{"Mail_ID": "admin@nlife.in"}],
+=======
+<<<<<<< HEAD
+    "users": [
+        {
+            "email": "martin_mathew@nlife.in",
+            "username": "martin_mathew",
+            "otp": "963556",
+            "type": "admin",
+            "verified": false
+        },
+        {
+            "email": "martintheodorus4@gmail.com",
+            "username": "martintheodorus4",
+            "otp": "665484",
+            "type": "tester",
+            "verified": false
+        }
+    ],
+    "externals": [
+        {
+            "email": "martintheodorus4@gmail.com",
+            "username": "martintheodorus4"
+        }
+    ],
+    "flp": [
+        {
+            "email": "admin@nlife.in"
+        }
+    ],
+=======
+    "users": [],
+    "externals": [],
+    "flp": [{"Mail_ID": "admin@nlife.in"}],
+>>>>>>> e56d6b9155d0fd95ffd6b4959d1be16fa0bc8ce8
+>>>>>>> Stashed changes
     "requests": [],
     "attendance": [],
     "leave_requests": []

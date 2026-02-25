@@ -1,7 +1,16 @@
 import json
 import os
 
+<<<<<<< Updated upstream
 DB_FILE = 'db/database.json'
+=======
+<<<<<<< HEAD
+DB_DIR = 'db'
+TABLES = ['users', 'externals', 'flp', 'requests', 'attendance', 'leave_requests']
+=======
+DB_FILE = 'db/database.json'
+>>>>>>> e56d6b9155d0fd95ffd6b4959d1be16fa0bc8ce8
+>>>>>>> Stashed changes
 
 def load_data():
     if not os.path.exists(DB_FILE):

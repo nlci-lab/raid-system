@@ -50,7 +50,12 @@
         <div id="content-requests" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                 <h2 class="font-bold text-gray-900">Pending Book Requests</h2>
-                <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-full">{{ requests|length }} Total</span>
+                <div class="flex items-center gap-4">
+                    <button onclick="window.location.reload();" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 hover:text-indigo-600 transition shadow-sm">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh Book Data
+                    </button>
+                    <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-full">{{ requests|length }} Total</span>
+                </div>
             </div>
             {% if requests %}
             <div class="overflow-x-auto">

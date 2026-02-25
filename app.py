@@ -1,16 +1,23 @@
-from flask import Flask, render_template, session, redirect, url_for, request
+from flask import Flask, json, render_template, session, redirect, url_for, request
 
 # system imports
 from auth import auth_bp
 from library import lib_bp
 from admins import admin_bp
-from blog import blog_bp # Removed get_posts, save_new_post imports as they are no longer needed here
+from blog import blog_bp 
 from chat import chat_bp 
 from database_view import db_view_bp 
 from attendance import attendance_bp 
 
+with open('db/pass.json') as f:
+    config = json.load(f)
+    if config == {}:
+        print('System will start')
+        exit()
+
+
 app = Flask(__name__)
-app.secret_key = "super_secure_secret_key_for_session"
+app.secret_key = open('db/pass.json').read()['secret_key']
 
 # Register Blueprints
 app.register_blueprint(auth_bp)

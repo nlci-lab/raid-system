@@ -1,25 +1,9 @@
 from flask import Blueprint, render_template, request, session, jsonify, redirect, url_for
-import json
-import os
 from datetime import datetime
-import database 
+
+import database
 
 chat_bp = Blueprint('chat', __name__)
-CHAT_FILE = 'chat.json'
-
-def load_chat_data():
-    if not os.path.exists(CHAT_FILE):
-        # Default structure with one public group
-        return {"groups": [{"id": "general", "name": "General Chat", "members": ["all"]}], "messages": []}
-    try:
-        with open(CHAT_FILE, 'r') as f:
-            return json.load(f)
-    except:
-        return {"groups": [], "messages": []}
-
-def save_chat_data(data):
-    with open(CHAT_FILE, 'w') as f:
-        json.dump(data, f, indent=4)
 
 @chat_bp.route('/chat')
 def index():

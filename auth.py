@@ -24,6 +24,9 @@ def login():
             # Step 2 & 3: Check if it ends with @nlife.in. If not, bye!
             if (not email.endswith("@nlife.in") and email not in data['externals'] and email not in data['flp']):
                 error = "Access Denied: Only NLCI Staffs are allowed."
+                # user requst to be added to external list
+                data['join_requests'].append({email: "pending"})
+                database.save_data(data)
             else:
                 # Step 4: Send OTP, ask for it, and add email/OTP to database
                 otp = f"{secrets.randbelow(1_000_000):06d}"

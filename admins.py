@@ -79,9 +79,8 @@ def backup_data():
 # --- USER MANAGEMENT: UPDATE USER ROLE ---
 @admin_bp.route("/admin/update_role", methods=["POST"])
 def update_role():
-    if session.get("type") != "admin":
-        flash("Only Admins can change user roles.")
-        return redirect(url_for('admin.dashboard'))
+    if session.get("type") != "admin": abort(403)
+
 
     target_email = request.form.get('email')
     new_role = request.form.get('role')
@@ -95,6 +94,13 @@ def update_role():
             break
 
     return redirect(url_for('admin.dashboard'))
+
+@admin_bp.route("/admin/pending_users", methods=["POST"])
+def pending_users():
+    """Allowing new user outside nlci"""
+    if session.get("type") != "admin": abort(403)
+
+
 
 # --- NEW ROUTE: LEAVE MANAGEMENT ---
 @admin_bp.route("/admin/update_leave", methods=["POST"])

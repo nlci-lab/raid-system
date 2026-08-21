@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+venv/
+*.log
+*.bak-*
+pass_raid_system.txt

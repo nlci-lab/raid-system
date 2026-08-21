@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Verifying{% endblock %}
+{% block content %}
+<div class="auth-card verify-anim-card">
+    <div class="verify-check" id="verify-icon">
+        <svg viewBox="0 0 52 52">
+            <circle class="verify-check-circle verify-spin" cx="26" cy="26" r="24" fill="none"/>
+            <path class="verify-check-mark" fill="none" d="M14 27l7 7 17-17"/>
+        </svg>
+    </div>
+    <h2 id="verify-status">Verifying {{ email }}…</h2>
+    <p class="auth-hint" id="verify-hint">Checking your one-time code…</p>
+</div>
+<script>
+    setTimeout(function () {
+        document.getElementById("verify-status").textContent = "Mail verification done";
+        document.getElementById("verify-hint").textContent = "{{ email }} — redirecting…";
+        document.getElementById("verify-icon").classList.add("verify-done");
+    }, 1300);
+    setTimeout(function () {
+        window.location.href = "{{ url_for('hello') }}";
+    }, 2200);
+</script>
+{% endblock %}

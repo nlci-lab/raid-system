@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Access Denied{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / Access Denied{% endblock %}
+{% block content %}
+<div class="auth-card">
+    <h2>You are not allowed to access this section</h2>
+    <p class="auth-hint">If you need access, tell an admin why and they'll review your request.</p>
+    <form method="post" action="{{ url_for('access.submit_request') }}" class="auth-form">
+        <input type="hidden" name="section" value="{{ request.path }}">
+        <label for="reason">Why do you need access to this section?</label>
+        <textarea id="reason" name="reason" rows="4" placeholder="Explain why you need access..." required></textarea>
+        <button type="submit" class="auth-submit">Request permission</button>
+    </form>
+</div>
+{% endblock %}

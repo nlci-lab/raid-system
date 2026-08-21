@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Profile{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / Profile{% endblock %}
+{% block content %}
+<h2>Profile</h2>
+<div class="auth-card">
+    {% if user %}
+    <dl class="modal-body">
+        <dt>ID</dt>
+        <dd>{{ user['id'] }}</dd>
+        <dt>Name</dt>
+        <dd>{{ user['name'] }}</dd>
+        <dt>Email</dt>
+        <dd>{{ user['email'] or email }}</dd>
+        <dt>Library Code</dt>
+        <dd>{{ user['library_code'] or '—' }}</dd>
+        <dt>Role</dt>
+        <dd>{{ user['role'] }}</dd>
+    </dl>
+    {% else %}
+    <p>No user record found for {{ email }}.</p>
+    {% endif %}
+</div>
+{% endblock %}

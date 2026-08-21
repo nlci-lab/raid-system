@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Verify code{% endblock %}
+{% block content %}
+<div class="auth-card">
+    <h2>Enter verification code</h2>
+    <p class="auth-hint">We sent a 6-digit code to <strong>{{ email }}</strong>. It expires in 5 minutes.</p>
+    <form method="post" class="auth-form">
+        <label for="otp">Verification code</label>
+        <input type="text" id="otp" name="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required autofocus>
+        <button type="submit" class="auth-submit">Verify</button>
+    </form>
+    <form method="post" action="{{ url_for('auth.login') }}" class="auth-resend">
+        <input type="hidden" name="email" value="{{ email }}">
+        <button type="submit" class="link-button">Resend code</button>
+    </form>
+</div>
+{% endblock %}

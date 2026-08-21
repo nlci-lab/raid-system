@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}RAIDsystem{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+</head>
+<body>
+    <header class="site-header">
+        <a href="/"><h1>RAIDsystem</h1></a>
+        <div class="header-right">
+            <div class="breadcrumb">{% block breadcrumb %}{% endblock %}</div>
+            {% if session.get('logged_in') %}
+            <div class="user-info">
+                <a class="user-email" href="{{ url_for('access.profile') }}">{{ session.get('user_email') }}</a>
+                <a class="logout-link" href="{{ url_for('auth.logout') }}">Log out</a>
+            </div>
+            {% endif %}
+        </div>
+    </header>
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+    <div id="detail-modal" class="modal-overlay" hidden>
+        <div class="modal" role="dialog" aria-modal="true">
+            <button type="button" class="modal-close" aria-label="Close">&times;</button>
+            <h3 class="modal-title"></h3>
+            <dl class="modal-body"></dl>
+            <div class="modal-actions"></div>
+        </div>
+    </div>
+</body>
+</html>

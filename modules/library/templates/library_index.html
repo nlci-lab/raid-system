@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Library{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / Library{% endblock %}
+{% block content %}
+<div class="full-width-page">
+{% set genres = books | map(attribute='genre') | select | unique | sort | list %}
+<div class="genre-tabs" role="tablist">
+    <button type="button" class="genre-tab active" data-genre="all">All <span class="genre-tab-count">{{ books | length }}</span></button>
+    {% for genre in genres %}
+    <button type="button" class="genre-tab" data-genre="{{ genre }}">{{ genre }} <span class="genre-tab-count">{{ books | selectattr('genre', 'equalto', genre) | list | length }}</span></button>
+    {% endfor %}
+</div>
+<div class="table-wrap table-wrap-bleed">
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>No.</th>
+            <th>Title</th>
+            <th>Author</th>
+            <th>Year</th>
+            <th>Genre</th>
+            <th>Bookcase</th>
+            <th>Bookshelf</th>
+            <th>Availability</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for book in books %}
+        <tr data-genre="{{ book['genre'] or '' }}"
+            data-request-url="{{ url_for('library.request_book', book_id=book['id']) }}"
+            data-requested="{{ '1' if book['id'] in requested_ids else '0' }}"
+            data-detail='{{ {
+            "No.": book["id"],
+            "Title": book["title"],
+            "Author": book["author"],
+            "Year": book["pub_year"],
+            "Genre": book["genre"],
+            "Series": book["series"],
+            "Volume": book["volume"],
+            "Bookcase": book["bookcase"],
+            "Bookshelf": book["bookshelf"],
+            "Availability": book["availability"],
+            "Remarks": book["remarks"],
+            "Call No.": book["library_id"],
+            "Location Code": book["location_code"],
+            "TOC Link": book["toc_link"],
+        } | tojson }}'>
+            <td>{{ loop.index }}</td>
+            <td>{{ book['id'] }}</td>
+            <td>{{ book['title'] }}</td>
+            <td>{{ book['author'] }}</td>
+            <td>{{ book['pub_year'] }}</td>
+            <td>{{ book['genre'] }}</td>
+            <td>{{ book['bookcase'] }}</td>
+            <td>{{ book['bookshelf'] }}</td>
+            <td>{{ book['availability'] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+</div>
+{% endblock %}

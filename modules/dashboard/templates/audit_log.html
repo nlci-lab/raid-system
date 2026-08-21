@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Audit Log{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / <a href="{{ url_for('dashboard.index') }}">Dashboard</a> / Audit Log{% endblock %}
+{% block content %}
+<div class="dashboard-app full-width-page">
+    <div class="dashboard-content">
+    <section class="dashboard-section">
+    <h2>Audit Log</h2>
+    <p>Every write made by an admin or data manager, most recent first.</p>
+    <div class="table-wrap">
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>When</th>
+            <th>By</th>
+            <th>Role</th>
+            <th>Module</th>
+            <th>Action</th>
+            <th>Details</th>
+            <th>IP</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for entry in entries %}
+        <tr>
+            <td>{{ entry['created_at'] }}</td>
+            <td>{{ entry['actor_email'] }}</td>
+            <td>{{ entry['actor_role'] or '—' }}</td>
+            <td>{{ entry['module'] }}</td>
+            <td>{{ entry['action'] }}</td>
+            <td>{{ entry['details'] or '' }}</td>
+            <td>{{ entry['ip_address'] or '' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="7">No audit entries yet.</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    </section>
+    </div>
+</div>
+{% endblock %}

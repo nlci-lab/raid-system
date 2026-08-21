@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem{% endblock %}
+{% block content %}
+<div class="home-panel">
+    <div class="box-grid">
+        <a class="box box-languages" href="/languages">
+            <span class="box-icon">🌐</span>
+            <span class="box-title">Languages</span>
+            <span class="box-desc">Vocabulary, lessons &amp; practice</span>
+        </a>
+        <a class="box box-blog" href="/blog">
+            <span class="box-icon">📝</span>
+            <span class="box-title">Blog</span>
+            <span class="box-desc">Posts, updates &amp; announcements</span>
+        </a>
+        <a class="box box-library" href="/library">
+            <span class="box-icon">📚</span>
+            <span class="box-title">Library</span>
+            <span class="box-desc">Books &amp; reading resources</span>
+        </a>
+        <a class="box box-chat" href="/chat">
+            <span class="box-icon">💬</span>
+            <span class="box-title">Chat</span>
+            <span class="box-desc">Messages &amp; conversations</span>
+        </a>
+        <a class="box box-attendance" href="/attendance/history">
+            <span class="box-icon">🗓️</span>
+            <span class="box-title">Attendance</span>
+            <span class="box-desc">Check-in history</span>
+        </a>
+        <a class="box box-dashboard" href="/dashboard">
+            <span class="box-icon">📊</span>
+            <span class="box-title">Dashboard</span>
+            <span class="box-desc">Stats &amp; overview</span>
+        </a>
+        <a class="box box-internal-db" href="/internal-database">
+            <span class="box-icon">🗄️</span>
+            <span class="box-title">Internal Database</span>
+            <span class="box-desc">Admin only</span>
+        </a>
+    </div>
+</div>
+{% endblock %}

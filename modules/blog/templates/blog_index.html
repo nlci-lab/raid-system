@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Blog{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / Blog{% endblock %}
+{% block content %}
+<div class="blog-header">
+    <h2>Blog</h2>
+    {% if is_admin %}
+    <a class="blog-new-btn" href="{{ url_for('blog.new_post') }}">New Post</a>
+    {% endif %}
+</div>
+
+{% if posts %}
+{% set has_internal = posts | selectattr('is_internal') | list %}
+{% if has_internal %}
+<div class="blog-tabs">
+    <button type="button" class="blog-tab active" data-filter="all">All</button>
+    <button type="button" class="blog-tab" data-filter="public">Public</button>
+    <button type="button" class="blog-tab" data-filter="internal">Internal</button>
+</div>
+{% endif %}
+<div class="blog-list">
+    {% for post in posts %}
+    <a class="blog-card" data-internal="{{ 1 if post['is_internal'] else 0 }}" href="{{ url_for('blog.view_post', post_id=post['id']) }}">
+        <div class="blog-card-title">
+            {{ post['title'] }}
+            {% if post['is_internal'] %}<span class="blog-internal-badge">Internal</span>{% endif %}
+        </div>
+        <div class="blog-card-meta">
+            {{ name_map.get(post['author_email'], post['author_email']) }} &middot; {{ post['created_at'] }}
+            &middot; {{ post['comment_count'] }} comment{{ 's' if post['comment_count'] != 1 else '' }}
+        </div>
+        <div class="blog-card-excerpt">{{ post['body'][:180] }}{% if post['body']|length > 180 %}…{% endif %}</div>
+    </a>
+    {% endfor %}
+</div>
+<p class="blog-empty blog-empty-filtered" style="display:none;">No posts in this category.</p>
+{% else %}
+<p class="blog-empty">No posts yet. Be the first to write one.</p>
+{% endif %}
+
+{% if has_internal %}
+<script>
+(function () {
+    var tabs = document.querySelectorAll('.blog-tab');
+    var cards = document.querySelectorAll('.blog-card');
+    var emptyMsg = document.querySelector('.blog-empty-filtered');
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            tabs.forEach(function (t) { t.classList.remove('active'); });
+            tab.classList.add('active');
+            var filter = tab.dataset.filter;
+            var visibleCount = 0;
+            cards.forEach(function (card) {
+                var isInternal = card.dataset.internal === '1';
+                var show = filter === 'all' || (filter === 'internal' && isInternal) || (filter === 'public' && !isInternal);
+                card.style.display = show ? '' : 'none';
+                if (show) visibleCount++;
+            });
+            emptyMsg.style.display = visibleCount === 0 ? '' : 'none';
+        });
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

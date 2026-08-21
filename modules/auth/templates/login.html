@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Login{% endblock %}
+{% block content %}
+<div class="auth-card">
+    <h2>Sign in</h2>
+    <p class="auth-hint">Use your @nlife.in email address. We'll send a one-time code to verify it.</p>
+    <form method="post" class="auth-form">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" placeholder="you@nlife.in" value="{{ email or '' }}" required autofocus>
+        <button type="submit" class="auth-submit">Send code</button>
+    </form>
+</div>
+{% endblock %}

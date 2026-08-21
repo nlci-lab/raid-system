@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Attendance{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / Attendance{% endblock %}
+{% block content %}
+{% if session.get('logged_in') %}
+<p><a href="{{ url_for('attendance.index') }}">Mark today's attendance →</a></p>
+{% endif %}
+
+<h2>Summary</h2>
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>Name</th>
+            <th>Present</th>
+            <th>Absent</th>
+            <th>Leave</th>
+            <th>Total</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in summary %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ row['user_name'] }}</td>
+            <td>{{ row['present_count'] }}</td>
+            <td>{{ row['absent_count'] }}</td>
+            <td>{{ row['leave_count'] }}</td>
+            <td>{{ row['total'] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<h2>History</h2>
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>Date</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Marked By</th>
+            <th>Marked At</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for record in records %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ record['date'] }}</td>
+            <td>{{ record['user_name'] }}</td>
+            <td>{{ record['status']|capitalize }}</td>
+            <td>{{ record['marked_by'] or '' }}</td>
+            <td>{{ record['marked_at'] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

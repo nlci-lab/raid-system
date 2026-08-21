@@ -1,0 +1,657 @@
+{% extends "base.html" %}
+{% block title %}RAID-ILDB{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / RAID-ILDB{% endblock %}
+{% block content %}
+<div class="full-width-page">
+<div class="ildb-layout">
+<div class="ildb-sidebar">
+    <button type="button" class="ildb-toptab active" data-panel="ildb-panel-dashboard">
+        <span class="ildb-toptab-icon">📈</span>
+        <span class="ildb-toptab-label">Dashboard</span>
+    </button>
+    <button type="button" class="ildb-toptab" data-panel="ildb-panel-tables">
+        <span class="ildb-toptab-icon">🗂️</span>
+        <span class="ildb-toptab-label">Tables</span>
+    </button>
+    <button type="button" class="ildb-toptab" data-panel="ildb-panel-database">
+        <span class="ildb-toptab-icon">🗄️</span>
+        <span class="ildb-toptab-label">Database</span>
+    </button>
+    <button type="button" class="ildb-toptab" data-panel="ildb-panel-search">
+        <span class="ildb-toptab-icon">🔍</span>
+        <span class="ildb-toptab-label">Search</span>
+    </button>
+</div>
+<div class="ildb-content">
+<div class="ildb-panel active" id="ildb-panel-dashboard">
+    <div class="ildb-dashboard-panel">
+        <h2>Indian Language Database — Overview</h2>
+        <p class="idb-panel-desc">{{ total }} languages tracked in the NLCI-India Bible Translation Language Database.</p>
+
+        <div class="idb-cards">
+            <div class="idb-card">
+                <div class="idb-card-k">Total Languages</div>
+                <div class="idb-card-v">{{ total }}</div>
+            </div>
+            <div class="idb-card">
+                <div class="idb-card-k">Spoken</div>
+                <div class="idb-card-v">{{ spoken }}</div>
+            </div>
+            <div class="idb-card">
+                <div class="idb-card-k">Extinct</div>
+                <div class="idb-card-v">{{ extinct }}</div>
+            </div>
+            <div class="idb-card">
+                <div class="idb-card-k">Language Families</div>
+                <div class="idb-card-v">{{ families }}</div>
+            </div>
+        </div>
+
+        <div class="idb-panel-grid">
+            <div class="idb-panel">
+                <h3>By Status</h3>
+                <p class="idb-panel-desc">All {{ total }} languages, by current status.</p>
+                <div class="idb-bar-list">
+                    {% for bar in status_bars %}
+                    <div class="idb-bar-row">
+                        <span class="idb-bar-label">{{ bar.label }}</span>
+                        <span class="idb-bar-track"><span class="idb-bar-fill" style="width: {{ bar.pct }}%"></span></span>
+                        <span class="idb-bar-count">{{ bar.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="idb-panel">
+                <h3>By Strategic Zone</h3>
+                <p class="idb-panel-desc">Languages located in each RAID zone.</p>
+                <div class="idb-bar-list">
+                    {% for bar in zone_bars %}
+                    <div class="idb-bar-row">
+                        <span class="idb-bar-label">{{ bar.label }}</span>
+                        <span class="idb-bar-track"><span class="idb-bar-fill" style="width: {{ bar.pct }}%"></span></span>
+                        <span class="idb-bar-count">{{ bar.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="ildb-panel" id="ildb-panel-tables" hidden>
+{% if tables %}
+<div class="gsheet" data-sheets-var="__ILDB_SHEETS__" data-active-var="__ILDB_ACTIVE__">
+    <div class="gsheet-titlebar">
+        <span class="gsheet-file-icon">📊</span>
+        <span class="gsheet-title">RAID-ILDB</span>
+        <span class="gsheet-viewonly">View only</span>
+        <div class="gsheet-search-wrap">
+            <input class="gsheet-search" type="text" placeholder="Search in sheet">
+            <span class="gsheet-search-count"></span>
+        </div>
+    </div>
+    <div class="gsheet-formulabar">
+        <div class="gsheet-cellref">A1</div>
+        <div class="gsheet-fx">fx</div>
+        <input class="gsheet-formula-input" type="text" readonly tabindex="-1">
+    </div>
+    <div class="gsheet-gridwrap">
+        <table class="gsheet-grid"></table>
+    </div>
+    <div class="gsheet-tabsbar">
+        <div class="gsheet-tabs">
+            {% for t in tables %}
+            <button type="button" class="gsheet-tab{{ ' active' if t == table else '' }}" data-table="{{ t }}">{{ t }}</button>
+            {% endfor %}
+        </div>
+        <div class="gsheet-rowcount"></div>
+    </div>
+</div>
+<script>
+    window.__ILDB_SHEETS__ = {{ sheets|tojson }};
+    window.__ILDB_ACTIVE__ = {{ table|tojson }};
+</script>
+{% else %}
+<p>No data.</p>
+{% endif %}
+</div>
+<div class="ildb-panel" id="ildb-panel-database" hidden>
+{% if db_sheets %}
+<div class="gsheet" data-sheets-var="__ILDB_DB_SHEETS__" data-active-var="__ILDB_DB_ACTIVE__">
+    <div class="gsheet-titlebar">
+        <span class="gsheet-file-icon">🗄️</span>
+        <span class="gsheet-title">All Languages — Combined</span>
+        <span class="gsheet-viewonly">View only</span>
+        <div class="gsheet-search-wrap">
+            <input class="gsheet-search" type="text" placeholder="Search combined data">
+            <span class="gsheet-search-count"></span>
+        </div>
+    </div>
+    <div class="gsheet-formulabar">
+        <div class="gsheet-cellref">A1</div>
+        <div class="gsheet-fx">fx</div>
+        <input class="gsheet-formula-input" type="text" readonly tabindex="-1">
+    </div>
+    <div class="gsheet-gridwrap">
+        <table class="gsheet-grid"></table>
+    </div>
+    <div class="gsheet-tabsbar">
+        <div class="gsheet-tabs"></div>
+        <div class="gsheet-rowcount"></div>
+    </div>
+</div>
+<script>
+    window.__ILDB_DB_SHEETS__ = {{ db_sheets|tojson }};
+    window.__ILDB_DB_ACTIVE__ = {{ db_table|tojson }};
+</script>
+{% else %}
+<p>No data.</p>
+{% endif %}
+</div>
+<script src="{{ url_for('static', filename='js/ildb_gsheet.js') }}" defer></script>
+<div class="ildb-panel" id="ildb-panel-search" hidden>
+    <div class="ildb-dashboard-placeholder">
+        <span class="ildb-dashboard-icon">🔍</span>
+        <h2>Search</h2>
+        <p>Coming soon.</p>
+        <span class="ildb-dashboard-badge">In progress</span>
+    </div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+(function () {
+    var tabs = document.querySelectorAll(".ildb-toptab");
+    var panels = document.querySelectorAll(".ildb-panel");
+    tabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
+            tabs.forEach(function (t) { t.classList.remove("active"); });
+            panels.forEach(function (p) { p.hidden = true; p.classList.remove("active"); });
+            tab.classList.add("active");
+            var panel = document.getElementById(tab.dataset.panel);
+            panel.hidden = false;
+            panel.classList.add("active");
+        });
+    });
+})();
+</script>
+
+<style>
+.ildb-layout {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    gap: 16px;
+    padding: 16px;
+}
+
+.ildb-sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 220px;
+    flex-shrink: 0;
+    align-self: flex-start;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    gap: 4px;
+}
+
+.ildb-toptab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: none;
+    background: none;
+    color: var(--text);
+    text-align: left;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 0.92em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.ildb-toptab-icon {
+    font-size: 1.1em;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.ildb-toptab-label {
+    flex: 1;
+    min-width: 0;
+}
+
+.ildb-toptab:hover {
+    background: var(--row-hover);
+}
+
+.ildb-toptab.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+.ildb-content {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.ildb-panel {
+    flex: 1;
+    min-height: 0;
+    display: none;
+    flex-direction: column;
+}
+
+.ildb-panel.active {
+    display: flex;
+}
+
+.ildb-dashboard-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-align: center;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.ildb-dashboard-panel {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    padding: 24px 28px;
+}
+
+.ildb-dashboard-panel h2 {
+    margin: 0;
+    font-size: 1.25em;
+}
+
+.ildb-dashboard-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 8px;
+    border-radius: 50%;
+    background: var(--bg);
+    font-size: 1.8em;
+}
+
+.ildb-dashboard-placeholder h2 {
+    margin: 0;
+    font-size: 1.15em;
+    color: var(--text);
+}
+
+.ildb-dashboard-placeholder p {
+    margin: 0;
+    font-size: 0.92em;
+}
+
+.ildb-dashboard-badge {
+    margin-top: 10px;
+    font-size: 0.72em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--accent);
+    background: var(--row-hover);
+    border-radius: 999px;
+    padding: 4px 12px;
+}
+
+.gsheet {
+    --gs-border: var(--border);
+    --gs-header-bg: var(--bg);
+    --gs-header-text: var(--muted);
+    --gs-accent: var(--accent);
+    --gs-accent-bg: var(--row-hover);
+    --gs-text: var(--text);
+    --gs-muted: var(--muted);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    font-family: inherit;
+    color: var(--gs-text);
+}
+
+body:has(main .gsheet) {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+body:has(main .gsheet) .site-header {
+    flex-shrink: 0;
+}
+
+body:has(main .gsheet) main {
+    flex: 1;
+    min-height: 0;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+body:has(main .gsheet) .full-width-page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.gsheet-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--gs-border);
+}
+
+.gsheet-file-icon {
+    font-size: 1.2em;
+    line-height: 1;
+}
+
+.gsheet-title {
+    font-size: 1em;
+    font-weight: 600;
+    color: var(--gs-text);
+}
+
+.gsheet-viewonly {
+    font-size: 0.7em;
+    font-weight: 600;
+    color: var(--gs-accent);
+    background: var(--gs-accent-bg);
+    border: none;
+    border-radius: 999px;
+    padding: 2px 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.gsheet-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.gsheet-search {
+    border: 1px solid var(--gs-border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.85em;
+    width: 200px;
+    background: var(--gs-header-bg);
+    color: var(--gs-text);
+    font-family: inherit;
+    transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.gsheet-search:focus {
+    outline: none;
+    border-color: var(--gs-accent);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px var(--gs-accent-bg);
+}
+
+.gsheet-search-count {
+    font-size: 0.78em;
+    color: var(--gs-muted);
+    min-width: 3.5em;
+}
+
+.gsheet-formulabar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 18px;
+    background: var(--gs-header-bg);
+    border-bottom: 1px solid var(--gs-border);
+}
+
+.gsheet-cellref {
+    width: 56px;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: var(--gs-accent);
+    background: var(--gs-accent-bg);
+    border-radius: 6px;
+    padding: 3px 8px;
+    text-align: center;
+}
+
+.gsheet-fx {
+    font-style: italic;
+    font-size: 0.85em;
+    color: var(--gs-muted);
+}
+
+.gsheet-formula-input {
+    flex: 1;
+    border: none;
+    font-size: 0.88em;
+    color: var(--gs-text);
+    background: transparent;
+    font-family: inherit;
+}
+
+.gsheet-formula-input:focus {
+    outline: none;
+}
+
+.gsheet-gridwrap {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background: var(--surface);
+}
+
+table.gsheet-grid {
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.gsheet-grid th,
+.gsheet-grid td {
+    border: 1px solid var(--gs-border);
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.85em;
+}
+
+.gsheet-corner,
+.gsheet-colhead,
+.gsheet-rownum {
+    background: var(--gs-header-bg);
+    color: var(--gs-header-text);
+    font-weight: 400;
+    position: sticky;
+    z-index: 3;
+    text-align: center;
+    user-select: none;
+}
+
+.gsheet-corner {
+    top: 0;
+    left: 0;
+    z-index: 4;
+}
+
+.gsheet-colhead {
+    top: 0;
+    padding: 5px 4px;
+    position: relative;
+}
+
+.gsheet-colhead.active {
+    background: var(--gs-accent-bg);
+    color: var(--gs-accent);
+    font-weight: 600;
+}
+
+.gsheet-rownum {
+    left: 0;
+    padding: 3px 6px;
+}
+
+.gsheet-rownum.active {
+    background: var(--gs-accent-bg);
+    color: var(--gs-accent);
+    font-weight: 600;
+}
+
+.gsheet-cell {
+    padding: 3px 6px;
+    cursor: cell;
+}
+
+.gsheet-headerrow-cell {
+    font-weight: 600;
+}
+
+.gsheet-cell.selected {
+    outline: 2px solid var(--gs-accent);
+    outline-offset: -2px;
+    position: relative;
+    z-index: 1;
+}
+
+.gsheet-cell.match {
+    background: #fef3c7;
+}
+
+.gsheet-cell.match-current {
+    background: #fde68a;
+}
+
+.gsheet-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 2;
+}
+
+.gsheet-resize-handle:hover,
+.gsheet-resize-handle.resizing {
+    background: var(--gs-accent);
+    opacity: 0.4;
+}
+
+body.col-resizing {
+    cursor: col-resize;
+    user-select: none;
+}
+
+.gsheet-tabsbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--gs-header-bg);
+    border-top: 1px solid var(--gs-border);
+    font-size: 0.85em;
+}
+
+.gsheet-tabs {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    flex: 1;
+}
+
+.gsheet-tab {
+    border: none;
+    background: transparent;
+    color: var(--gs-muted);
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-family: inherit;
+    font-size: 0.95em;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.gsheet-tab:hover {
+    background: var(--row-hover);
+    color: var(--gs-text);
+}
+
+.gsheet-tab.active {
+    background: var(--gs-accent);
+    color: #fff;
+    font-weight: 600;
+}
+
+.gsheet-rowcount {
+    color: var(--gs-muted);
+    font-size: 0.85em;
+    padding: 0 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .gsheet-search {
+        width: 130px;
+    }
+
+    .ildb-layout {
+        flex-direction: column;
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .ildb-sidebar {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+    }
+
+    .ildb-toptab {
+        width: auto;
+        white-space: nowrap;
+    }
+}
+</style>
+{% endblock %}

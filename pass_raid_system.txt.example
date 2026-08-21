@@ -1,0 +1,6 @@
+{
+    "email_id": "your-smtp-account@gmail.com",
+    "passcode": "your gmail app password",
+    "sheet_url": "https://docs.google.com/spreadsheets/d/e/your-published-sheet/pub?output=csv",
+    "secret_key": "replace-with-a-random-secret-key"
+}

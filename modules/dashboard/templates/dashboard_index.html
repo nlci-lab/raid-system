@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Dashboard{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / Dashboard{% endblock %}
+{% block content %}
+<div class="dashboard-app full-width-page">
+    <nav class="dashboard-sidebar">
+        <button type="button" class="dashboard-nav-item active" data-target="access-requests">
+            <span class="dashboard-nav-icon">🔑</span>
+            <span class="dashboard-nav-label">Access Requests</span>
+            <span class="dashboard-nav-count">{{ access_requests|length }}</span>
+        </button>
+        <button type="button" class="dashboard-nav-item" data-target="book-requests">
+            <span class="dashboard-nav-icon">📖</span>
+            <span class="dashboard-nav-label">Book Requests</span>
+            <span class="dashboard-nav-count">{{ requests|length }}</span>
+        </button>
+        <button type="button" class="dashboard-nav-item" data-target="users">
+            <span class="dashboard-nav-icon">👤</span>
+            <span class="dashboard-nav-label">Users</span>
+            <span class="dashboard-nav-count">{{ users|length }}</span>
+        </button>
+        <button type="button" class="dashboard-nav-item" data-target="loans">
+            <span class="dashboard-nav-icon">📚</span>
+            <span class="dashboard-nav-label">Loans</span>
+            <span class="dashboard-nav-count">{{ loans|length }}</span>
+        </button>
+        {% if is_admin %}
+        <a class="dashboard-nav-item" href="{{ url_for('dashboard.audit_log') }}">
+            <span class="dashboard-nav-icon">🧾</span>
+            <span class="dashboard-nav-label">Audit Log</span>
+        </a>
+        {% endif %}
+    </nav>
+    <div class="dashboard-content">
+    <section class="dashboard-section" data-section="access-requests">
+    <h2>Access Requests</h2>
+    <div class="table-wrap">
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>Requested By</th>
+            <th>Section</th>
+            <th>Reason</th>
+            <th>Requested At</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for req in access_requests %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ req['user_email'] }}</td>
+            <td>{{ req['section'] }}</td>
+            <td>{{ req['reason'] }}</td>
+            <td>{{ req['requested_at'] }}</td>
+            <td><span class="request-status request-status-{{ req['status'] }}">{{ req['status'] }}</span></td>
+            <td>
+                {% if req['status'] == 'pending' %}
+                <div class="request-actions">
+                    <form method="post" action="{{ url_for('access.resolve_request', request_id=req['id']) }}">
+                        <input type="hidden" name="decision" value="approved">
+                        <button type="submit" class="request-accept-btn">Approve</button>
+                    </form>
+                    <form method="post" action="{{ url_for('access.resolve_request', request_id=req['id']) }}">
+                        <input type="hidden" name="decision" value="rejected">
+                        <button type="submit" class="request-reject-btn">Reject</button>
+                    </form>
+                </div>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="7">No access requests yet.</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    </section>
+
+    <section class="dashboard-section" data-section="book-requests" hidden>
+    <h2>Book Requests</h2>
+    <div class="table-wrap">
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>Book</th>
+            <th>Requested By</th>
+            <th>Requested At</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for req in requests %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ req['book_title'] }}</td>
+            <td>{{ req['user_name'] }}</td>
+            <td>{{ req['requested_at'] }}</td>
+            <td><span class="request-status request-status-{{ req['status'] }}">{{ req['status'] }}</span></td>
+            <td>
+                {% if req['status'] == 'pending' %}
+                <div class="request-actions">
+                    <form method="post" action="{{ url_for('library.accept_request', request_id=req['id']) }}">
+                        <button type="submit" class="request-accept-btn">Accept &amp; issue</button>
+                    </form>
+                    <form method="post" action="{{ url_for('library.reject_request', request_id=req['id']) }}">
+                        <button type="submit" class="request-reject-btn">Reject</button>
+                    </form>
+                </div>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6">No book requests yet.</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    </section>
+
+    <section class="dashboard-section" data-section="users" hidden>
+    <h2>Users</h2>
+    <form class="add-user-form" method="post" action="{{ url_for('dashboard.add_user') }}">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email (optional)">
+        <input type="text" name="library_code" placeholder="Library code (optional)">
+        <button type="submit">Add user</button>
+    </form>
+    <div class="table-wrap">
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Library Code</th>
+            <th>Role</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for user in users %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ user['id'] }}</td>
+            <td>{{ user['name'] }}</td>
+            <td>{{ user['library_code'] or '' }}</td>
+            <td>
+                {% if is_admin %}
+                <form class="role-form" method="post" action="{{ url_for('dashboard.update_role', user_id=user['id']) }}">
+                    <select name="role" onchange="this.form.submit()">
+                        {% for role in roles %}
+                        <option value="{{ role }}" {% if user['role'] == role %}selected{% endif %}>{{ role }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% else %}
+                {{ user['role'] }}
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    </section>
+
+    <section class="dashboard-section" data-section="loans" hidden>
+    <h2>Loans</h2>
+    <div class="table-wrap">
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>Book Title</th>
+            <th>Requested By</th>
+            <th>Requested At</th>
+            <th>Approved By</th>
+            <th>Approved At</th>
+            <th>Status</th>
+            <th>Returned</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for loan in loans %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ loan['title'] }}</td>
+            <td>{{ loan['user_name'] }}</td>
+            <td>{{ loan['requested_at'] or '—' }}</td>
+            <td>{{ loan['issued_by'] or '—' }}</td>
+            <td>{{ loan['issued_at'] or '—' }}</td>
+            <td>{{ loan['status'] }}</td>
+            <td>{% if loan['returned_at'] %}{{ loan['returned_at'] }} by {{ loan['returned_by'] }}{% else %}—{% endif %}</td>
+            <td>
+                {% if loan['status'] == 'Taken' %}
+                <form method="post" action="{{ url_for('library.return_loan', loan_id=loan['id']) }}">
+                    <button type="submit" class="request-accept-btn">Mark returned</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    </section>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,724 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — RAID Bot{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / RAID Bot{% endblock %}
+{% block content %}
+<style>
+    /* RAID Bot — ChatGPT-style layout. Scoped to this page only via the
+       .ai-chat-app class; the rest of the site's light theme is untouched. */
+
+    body:has(main .ai-chat-app) {
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body:has(main .ai-chat-app) .site-header {
+        flex-shrink: 0;
+    }
+
+    body:has(main .ai-chat-app) main {
+        flex: 1;
+        min-height: 0;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ai-chat-app {
+        --gpt-sidebar-bg: #171717;
+        --gpt-sidebar-hover: #2a2a2a;
+        --gpt-sidebar-active: #2f2f2f;
+        --gpt-sidebar-border: #2a2a2a;
+        --gpt-sidebar-text: #ececec;
+        --gpt-sidebar-muted: #9b9b9b;
+        --gpt-main-bg: #ffffff;
+        --gpt-text: #0d0d0d;
+        --gpt-muted: #8e8ea0;
+        --gpt-border: #e5e5e5;
+        --gpt-bubble-bg: #f4f4f4;
+        --gpt-accent: #111111;
+
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        position: relative;
+        background: var(--gpt-main-bg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* ---------- Sidebar ---------- */
+    .ai-chat-sidebar {
+        width: 260px;
+        flex-shrink: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--gpt-sidebar-bg);
+        color: var(--gpt-sidebar-text);
+        overflow: hidden;
+        white-space: nowrap;
+        transition: width 0.18s ease;
+    }
+
+    .ai-chat-app.sidebar-collapsed .ai-chat-sidebar {
+        width: 0;
+    }
+
+    .ai-chat-sidebar-inner {
+        width: 260px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
+    }
+
+    .ai-chat-sidebar-top {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding-bottom: 8px;
+    }
+
+    .ai-chat-icon-btn {
+        flex-shrink: 0;
+        width: 34px;
+        height: 34px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--gpt-sidebar-text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .ai-chat-icon-btn:hover {
+        background: var(--gpt-sidebar-hover);
+    }
+
+    .ai-chat-new-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border: 1px solid var(--gpt-sidebar-border);
+        border-radius: 10px;
+        background: transparent;
+        color: var(--gpt-sidebar-text);
+        font-size: 0.9em;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: inherit;
+    }
+
+    .ai-chat-new-btn:hover {
+        background: var(--gpt-sidebar-hover);
+    }
+
+    .ai-chat-sidebar-list {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding-top: 8px;
+    }
+
+    .ai-chat-sidebar-label {
+        padding: 6px 10px;
+        font-size: 0.72em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--gpt-sidebar-muted);
+    }
+
+    .ai-chat-sidebar-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 10px;
+        border-radius: 8px;
+        font-size: 0.88em;
+        color: var(--gpt-sidebar-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .ai-chat-sidebar-item.active {
+        background: var(--gpt-sidebar-active);
+    }
+
+    .ai-chat-sidebar-item svg {
+        flex-shrink: 0;
+        opacity: 0.85;
+    }
+
+    .ai-chat-sidebar-footer {
+        border-top: 1px solid var(--gpt-sidebar-border);
+        padding-top: 10px;
+        margin-top: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .ai-chat-sidebar-footer-label {
+        font-size: 0.85em;
+        font-weight: 600;
+    }
+
+    .ai-chat-sidebar-footer-sub {
+        font-size: 0.72em;
+        color: var(--gpt-sidebar-muted);
+    }
+
+    /* Mobile: sidebar becomes a fixed overlay drawer */
+    @media (max-width: 768px) {
+        .ai-chat-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 60;
+            box-shadow: 2px 0 24px rgba(0, 0, 0, 0.3);
+        }
+    }
+
+    .ai-chat-backdrop {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .ai-chat-app:not(.sidebar-collapsed) .ai-chat-backdrop {
+            display: block;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 55;
+        }
+    }
+
+    /* ---------- Main pane ---------- */
+    .ai-chat-main {
+        flex: 1;
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--gpt-main-bg);
+    }
+
+    .ai-chat-topbar {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        color: var(--gpt-text);
+    }
+
+    .ai-chat-topbar-title {
+        font-weight: 600;
+        font-size: 0.95em;
+    }
+
+    .ai-chat-toggle-btn {
+        width: 34px;
+        height: 34px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--gpt-text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .ai-chat-toggle-btn:hover {
+        background: var(--gpt-bubble-bg);
+    }
+
+    /* ---------- Scroll area / messages ---------- */
+    .ai-chat-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .ai-chat-empty {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        text-align: center;
+        padding: 0 24px;
+    }
+
+    .ai-chat-empty-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: var(--gpt-accent);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 4px;
+    }
+
+    .ai-chat-empty-title {
+        font-size: 1.9em;
+        font-weight: 600;
+        color: var(--gpt-text);
+    }
+
+    .ai-chat-empty-sub {
+        font-size: 0.95em;
+        color: var(--gpt-muted);
+        max-width: 32rem;
+        line-height: 1.5;
+    }
+
+    .ai-chat-messages {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 24px 20px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+    }
+
+    .ai-msg {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+    }
+
+    .ai-msg-user {
+        justify-content: flex-end;
+    }
+
+    .ai-msg-avatar {
+        flex-shrink: 0;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--gpt-accent);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ai-msg-avatar-error {
+        background: #dc2626;
+    }
+
+    .ai-msg-content {
+        flex: 1;
+        min-width: 0;
+        padding-top: 4px;
+        color: var(--gpt-text);
+        font-size: 0.98em;
+        line-height: 1.65;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    .ai-msg-error-text {
+        color: #dc2626;
+    }
+
+    .ai-msg-bubble {
+        max-width: 75%;
+        padding: 10px 16px;
+        border-radius: 20px;
+        background: var(--gpt-bubble-bg);
+        color: var(--gpt-text);
+        font-size: 0.98em;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    /* Loading / typing indicator, shown inline in place of the reply */
+    .ai-chat-loading {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background: var(--gpt-muted);
+        border-radius: 50%;
+        animation: ai-chat-pulse 1s infinite;
+        margin-right: 4px;
+    }
+
+    .ai-chat-loading:nth-child(2) { animation-delay: 0.15s; }
+    .ai-chat-loading:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes ai-chat-pulse {
+        0%, 100% { opacity: 0.25; }
+        50% { opacity: 1; }
+    }
+
+    /* ---------- Composer ---------- */
+    .ai-chat-composer {
+        flex-shrink: 0;
+        padding: 8px 20px 18px;
+    }
+
+    .ai-chat-form {
+        max-width: 48rem;
+        margin: 0 auto;
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        padding: 10px 10px 10px 20px;
+        border: 1px solid var(--gpt-border);
+        border-radius: 26px;
+        background: var(--gpt-main-bg);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    }
+
+    .ai-chat-form:focus-within {
+        border-color: #c9c9c9;
+    }
+
+    .ai-chat-input {
+        flex: 1;
+        border: none;
+        outline: none;
+        resize: none;
+        background: transparent;
+        color: var(--gpt-text);
+        font-family: inherit;
+        font-size: 0.98em;
+        line-height: 1.5;
+        max-height: 200px;
+        padding: 8px 0;
+    }
+
+    .ai-chat-input::placeholder {
+        color: var(--gpt-muted);
+    }
+
+    .ai-chat-send-btn {
+        flex-shrink: 0;
+        width: 34px;
+        height: 34px;
+        border: none;
+        border-radius: 50%;
+        background: var(--gpt-accent);
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s ease, opacity 0.15s ease;
+    }
+
+    .ai-chat-send-btn:hover:not(:disabled) {
+        opacity: 0.85;
+    }
+
+    .ai-chat-send-btn:disabled {
+        background: var(--gpt-border);
+        color: var(--gpt-muted);
+        cursor: not-allowed;
+    }
+
+    .ai-chat-disclaimer {
+        text-align: center;
+        font-size: 0.75em;
+        color: var(--gpt-muted);
+        margin-top: 10px;
+    }
+
+    @media (max-width: 768px) {
+        .ai-chat-messages {
+            padding: 20px 14px 12px;
+        }
+
+        .ai-chat-composer {
+            padding: 8px 12px 14px;
+        }
+
+        .ai-chat-form {
+            padding: 8px 8px 8px 16px;
+        }
+
+        .ai-msg-bubble {
+            max-width: 88%;
+        }
+    }
+</style>
+
+<div class="ai-chat-app" id="aiChatApp">
+    <aside class="ai-chat-sidebar" id="aiChatSidebar">
+        <div class="ai-chat-sidebar-inner">
+            <div class="ai-chat-sidebar-top">
+                <button type="button" class="ai-chat-new-btn" id="newChatBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+                    New chat
+                </button>
+                <button type="button" class="ai-chat-icon-btn" id="collapseBtn" title="Collapse sidebar" aria-label="Collapse sidebar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 4v16"></path></svg>
+                </button>
+            </div>
+
+            <div class="ai-chat-sidebar-list">
+                <div class="ai-chat-sidebar-label">Current session</div>
+                <div class="ai-chat-sidebar-item active">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    Untitled conversation
+                </div>
+            </div>
+
+            <div class="ai-chat-sidebar-footer">
+                <div class="ai-chat-sidebar-footer-label">RAID Bot</div>
+                <div class="ai-chat-sidebar-footer-sub">Local · gemma2:2b via Ollama</div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="ai-chat-backdrop" id="aiChatBackdrop"></div>
+
+    <div class="ai-chat-main">
+        <div class="ai-chat-topbar">
+            <button type="button" class="ai-chat-toggle-btn" id="sidebarToggleBtn" title="Toggle sidebar" aria-label="Toggle sidebar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M9 4v16"></path></svg>
+            </button>
+            <div class="ai-chat-topbar-title">RAID Bot</div>
+        </div>
+
+        <div class="ai-chat-scroll" id="aiChatScroll">
+            <div class="ai-chat-empty" id="aiChatEmpty">
+                <div class="ai-chat-empty-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"></path></svg>
+                </div>
+                <div class="ai-chat-empty-title">RAID Bot</div>
+                <div class="ai-chat-empty-sub">Your RAIDsystem assistant. Ask a question to get started — it runs locally via Ollama, so nothing leaves this machine.</div>
+            </div>
+            <div class="ai-chat-messages" id="messagesContainer" aria-live="polite"></div>
+        </div>
+
+        <div class="ai-chat-composer">
+            <form class="ai-chat-form" id="chatForm">
+                <textarea
+                    id="messageInput"
+                    class="ai-chat-input"
+                    placeholder="Message RAID Bot"
+                    rows="1"
+                ></textarea>
+                <button type="submit" class="ai-chat-send-btn" id="sendBtn" disabled aria-label="Send message">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>
+                </button>
+            </form>
+            <div class="ai-chat-disclaimer">RAID Bot can make mistakes. Runs locally via Ollama — no data leaves this machine.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const aiChatApp = document.getElementById("aiChatApp");
+    const aiChatBackdrop = document.getElementById("aiChatBackdrop");
+    const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+    const collapseBtn = document.getElementById("collapseBtn");
+    const newChatBtn = document.getElementById("newChatBtn");
+    const aiChatEmpty = document.getElementById("aiChatEmpty");
+    const messagesContainer = document.getElementById("messagesContainer");
+    const messageInput = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const chatForm = document.getElementById("chatForm");
+
+    // Conversation history kept client-side only (no backend persistence).
+    let conversationHistory = [];
+    let isSending = false;
+
+    function isMobile() {
+        return window.innerWidth <= 768;
+    }
+
+    function setSidebarCollapsed(collapsed) {
+        aiChatApp.classList.toggle("sidebar-collapsed", collapsed);
+    }
+
+    // Sidebar starts collapsed on narrow viewports so it doesn't break layout.
+    setSidebarCollapsed(isMobile());
+
+    function toggleSidebar() {
+        setSidebarCollapsed(!aiChatApp.classList.contains("sidebar-collapsed"));
+    }
+
+    sidebarToggleBtn.addEventListener("click", toggleSidebar);
+    collapseBtn.addEventListener("click", () => setSidebarCollapsed(true));
+    aiChatBackdrop.addEventListener("click", () => setSidebarCollapsed(true));
+
+    function updateSendBtnState() {
+        sendBtn.disabled = isSending || messageInput.value.trim().length === 0;
+    }
+
+    // Auto-resize textarea
+    messageInput.addEventListener("input", function () {
+        this.style.height = "auto";
+        this.style.height = Math.min(this.scrollHeight, 200) + "px";
+        updateSendBtnState();
+    });
+
+    // Enter to send, Shift+Enter for a newline
+    messageInput.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            chatForm.requestSubmit();
+        }
+    });
+
+    chatForm.addEventListener("submit", sendMessage);
+    newChatBtn.addEventListener("click", startNewChat);
+
+    function hideEmptyState() {
+        aiChatEmpty.style.display = "none";
+    }
+
+    function showEmptyState() {
+        aiChatEmpty.style.display = "flex";
+    }
+
+    function scrollToBottom() {
+        const scrollEl = document.getElementById("aiChatScroll");
+        scrollEl.scrollTop = scrollEl.scrollHeight;
+    }
+
+    function sparkleIconSvg() {
+        return '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"></path></svg>';
+    }
+
+    function errorIconSvg() {
+        return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+    }
+
+    // Builds a message row and returns references to the parts callers need
+    // to update (used both for finished messages and for the pending/loading
+    // row, which is later converted in place into the real reply).
+    function createMessageRow(role) {
+        const row = document.createElement("div");
+        row.className = "ai-msg ai-msg-" + role;
+
+        if (role === "user") {
+            const bubble = document.createElement("div");
+            bubble.className = "ai-msg-bubble";
+            row.appendChild(bubble);
+            return { row, content: bubble };
+        }
+
+        const avatar = document.createElement("div");
+        avatar.className = "ai-msg-avatar" + (role === "error" ? " ai-msg-avatar-error" : "");
+        avatar.innerHTML = role === "error" ? errorIconSvg() : sparkleIconSvg();
+
+        const content = document.createElement("div");
+        content.className = "ai-msg-content" + (role === "error" ? " ai-msg-error-text" : "");
+
+        row.appendChild(avatar);
+        row.appendChild(content);
+        return { row, content };
+    }
+
+    function addMessageToUI(role, text) {
+        hideEmptyState();
+        const { row, content } = createMessageRow(role);
+        content.textContent = text;
+        messagesContainer.appendChild(row);
+        scrollToBottom();
+        return row;
+    }
+
+    function addLoadingRow() {
+        hideEmptyState();
+        const { row, content } = createMessageRow("assistant");
+        row.classList.add("ai-msg-pending");
+        content.innerHTML =
+            '<span class="ai-chat-loading"></span><span class="ai-chat-loading"></span><span class="ai-chat-loading"></span>';
+        messagesContainer.appendChild(row);
+        scrollToBottom();
+        return { row, content };
+    }
+
+    // Converts the in-flight loading row into an error row, in place.
+    function markRowAsError(row, content, message) {
+        row.className = "ai-msg ai-msg-error";
+        const avatar = row.querySelector(".ai-msg-avatar");
+        avatar.classList.add("ai-msg-avatar-error");
+        avatar.innerHTML = errorIconSvg();
+        content.className = "ai-msg-content ai-msg-error-text";
+        content.textContent = message;
+    }
+
+    async function sendMessage(event) {
+        event.preventDefault();
+        if (isSending) return;
+
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        addMessageToUI("user", message);
+        conversationHistory.push({ role: "user", content: message });
+
+        messageInput.value = "";
+        messageInput.style.height = "auto";
+        isSending = true;
+        updateSendBtnState();
+
+        const pending = addLoadingRow();
+
+        try {
+            const response = await fetch("/ai-chat/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ messages: conversationHistory })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                const error = data.error || "Unknown error";
+                markRowAsError(pending.row, pending.content, error);
+            } else {
+                const assistantReply = data.reply;
+                pending.row.classList.remove("ai-msg-pending");
+                pending.content.textContent = assistantReply;
+                conversationHistory.push({ role: "assistant", content: assistantReply });
+            }
+        } catch (err) {
+            markRowAsError(pending.row, pending.content, "Network error: " + err.message);
+        } finally {
+            isSending = false;
+            updateSendBtnState();
+            messageInput.focus();
+            scrollToBottom();
+        }
+    }
+
+    function startNewChat() {
+        conversationHistory = [];
+        messagesContainer.innerHTML = "";
+        showEmptyState();
+        messageInput.value = "";
+        messageInput.style.height = "auto";
+        updateSendBtnState();
+        if (isMobile()) {
+            setSidebarCollapsed(true);
+        }
+        messageInput.focus();
+    }
+
+    updateSendBtnState();
+</script>
+{% endblock %}

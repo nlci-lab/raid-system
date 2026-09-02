@@ -37,16 +37,20 @@ def build_books_db(data):
             genre TEXT,
             series TEXT,
             volume TEXT,
-            bookcase TEXT,
-            bookshelf TEXT,
-            availability TEXT,
             remarks TEXT
         )
     """)
+    for name in ("book_at", "availability", "library_code", "location_code", "toc_link"):
+        conn.execute(f"""
+            CREATE TABLE {name} (
+                book_id INTEGER PRIMARY KEY REFERENCES books(id),
+                value TEXT
+            )
+        """)
     conn.executemany(
         """INSERT INTO books
-           (id, title, author, pub_year, genre, series, volume, bookcase, bookshelf, availability, remarks)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           (id, title, author, pub_year, genre, series, volume, remarks)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
         [
             (
                 int(row[0]),
@@ -56,13 +60,18 @@ def build_books_db(data):
                 row[4].strip(),
                 row[5].strip(),
                 row[6].strip(),
-                row[7].strip(),
-                row[8].strip(),
-                row[9].strip(),
                 row[12].strip() if len(row) > 12 else "",
             )
             for row in data
         ],
+    )
+    conn.executemany(
+        "INSERT INTO book_at (book_id, value) VALUES (?, ?)",
+        [(int(row[0]), ", ".join(p for p in (row[7].strip(), row[8].strip()) if p) or None) for row in data],
+    )
+    conn.executemany(
+        "INSERT INTO availability (book_id, value) VALUES (?, ?)",
+        [(int(row[0]), row[9].strip()) for row in data],
     )
     conn.commit()
     conn.close()
@@ -79,7 +88,7 @@ def build_users_db(data):
             name TEXT NOT NULL UNIQUE,
             library_code TEXT,
             email TEXT,
-            role TEXT NOT NULL DEFAULT 'user'
+            level REAL NOT NULL DEFAULT 5.0
         )
     """)
     conn.executemany("INSERT INTO users (name) VALUES (?)", [(name,) for name in names])

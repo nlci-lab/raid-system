@@ -45,29 +45,30 @@ def build_books_db(rows):
             genre TEXT,
             series TEXT,
             volume TEXT,
-            bookcase TEXT,
-            bookshelf TEXT,
-            availability TEXT,
-            remarks TEXT,
-            library_id TEXT,
-            location_code TEXT,
-            toc_link TEXT
+            remarks TEXT
         )
     """)
+    for name in ("book_at", "availability", "library_code", "location_code", "toc_link"):
+        conn.execute(f"""
+            CREATE TABLE {name} (
+                book_id INTEGER PRIMARY KEY REFERENCES books(id),
+                value TEXT
+            )
+        """)
 
     taken_ids = {new_id for old_id, new_id in LOAN_BOOK_ID_REMAP.items() if old_id != 1}
 
-    records = []
+    book_records = []
+    attr_records = {"book_at": [], "availability": [], "library_code": [], "location_code": [], "toc_link": []}
     for row in rows:
         book_id = int(row["_id"])
         pub_year_raw = row["publish_year"].strip()
         pub_year = int(pub_year_raw) if pub_year_raw and pub_year_raw != "0000" else None
         shelf = row["_shelf_name"].strip()
         case_number = row["_case_number"].strip()
-        bookcase = f"Shelf {shelf}" if shelf else None
-        bookshelf = f"Case {case_number}" if case_number else None
+        book_at = ", ".join(part for part in (f"Shelf {shelf}" if shelf else "", f"Case {case_number}" if case_number else "") if part) or None
         availability = "Taken" if book_id in taken_ids else "At Stock"
-        records.append((
+        book_records.append((
             book_id,
             row["book_title"].strip(),
             row["author"].strip(),
@@ -75,25 +76,25 @@ def build_books_db(rows):
             row["genre"].strip(),
             row["series"].strip(),
             row["volume"].strip(),
-            bookcase,
-            bookshelf,
-            availability,
             "",
-            row["library_id"].strip(),
-            row["L_id"].strip(),
-            row["link_to_toc"].strip(),
         ))
+        attr_records["book_at"].append((book_id, book_at))
+        attr_records["availability"].append((book_id, availability))
+        attr_records["library_code"].append((book_id, row["library_id"].strip()))
+        attr_records["location_code"].append((book_id, row["L_id"].strip()))
+        attr_records["toc_link"].append((book_id, row["link_to_toc"].strip()))
 
     conn.executemany(
         """INSERT INTO books
-           (id, title, author, pub_year, genre, series, volume, bookcase, bookshelf,
-            availability, remarks, library_id, location_code, toc_link)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        records,
+           (id, title, author, pub_year, genre, series, volume, remarks)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        book_records,
     )
+    for name, records in attr_records.items():
+        conn.executemany(f"INSERT INTO {name} (book_id, value) VALUES (?, ?)", records)
     conn.commit()
     conn.close()
-    return len(records)
+    return len(book_records)
 
 
 def remap_loans():

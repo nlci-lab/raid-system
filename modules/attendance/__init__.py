@@ -2,15 +2,15 @@ import sqlite3
 from datetime import date, datetime
 from functools import wraps
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
 from modules.audit import log_action
 from modules.db import ATTENDANCE_DB, USERS_DB
+from modules.levels import MANAGER_LEVEL, current_level, tier
 
 attendance = Blueprint("attendance", __name__, template_folder="templates")
 
 STATUSES = ("present", "absent", "leave")
-MANAGER_ROLES = ("admin", "data_manager")
 
 SCHEMA = """
     CREATE TABLE IF NOT EXISTS attendance (
@@ -34,25 +34,15 @@ def get_conn():
     return conn
 
 
-def _current_user_role(conn):
-    email = session.get("user_email")
-    if not email:
-        return None
-    row = conn.execute("SELECT role FROM users.users WHERE lower(email) = ?", (email.lower(),)).fetchone()
-    return row["role"] if row else None
-
-
 def admin_required(view):
+    """dev/admin/data_manager/raid_staff only — also gates viewing attendance
+    at all, not just marking it."""
+
     @wraps(view)
     def wrapped(*args, **kwargs):
-        conn = get_conn()
-        try:
-            role = _current_user_role(conn)
-        finally:
-            conn.close()
-        if role not in MANAGER_ROLES:
-            flash("You need admin or data manager access to mark attendance.", "error")
-            return redirect(url_for("attendance.history"))
+        level = current_level()
+        if level is None or tier(level) > MANAGER_LEVEL:
+            abort(403)
         return view(*args, **kwargs)
 
     return wrapped
@@ -104,6 +94,7 @@ def mark():
 
 
 @attendance.route("/attendance/history")
+@admin_required
 def history():
     conn = get_conn()
     records = conn.execute(

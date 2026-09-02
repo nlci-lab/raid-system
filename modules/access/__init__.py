@@ -9,10 +9,9 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, s
 
 from modules.audit import log_action
 from modules.db import USERS_DB
+from modules.levels import MANAGER_LEVEL, VIEWER_LEVEL, current_level, level_label, tier
 
 access = Blueprint("access", __name__, template_folder="templates")
-
-MANAGER_ROLES = ("admin", "data_manager")
 
 SCHEMA = """
     CREATE TABLE IF NOT EXISTS access_requests (
@@ -39,23 +38,11 @@ def now():
     return datetime.now().isoformat(timespec="seconds")
 
 
-def _current_user_role(conn):
-    email = session.get("user_email")
-    if not email:
-        return None
-    row = conn.execute("SELECT role FROM users WHERE lower(email) = ?", (email.lower(),)).fetchone()
-    return row["role"] if row else None
-
-
 def manager_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
-        conn = get_conn()
-        try:
-            role = _current_user_role(conn)
-        finally:
-            conn.close()
-        if role not in MANAGER_ROLES:
+        level = current_level()
+        if level is None or tier(level) > MANAGER_LEVEL:
             abort(403)
         return view(*args, **kwargs)
 
@@ -69,7 +56,10 @@ def profile():
     conn.row_factory = sqlite3.Row
     user = conn.execute("SELECT * FROM users WHERE lower(email) = ?", (email.lower(),)).fetchone()
     conn.close()
-    return render_template("profile.html", user=user, email=email)
+    level = current_level()
+    if not user or level is None or tier(level) > VIEWER_LEVEL:
+        abort(403)
+    return render_template("profile.html", user=user, email=email, level=level, level_label=level_label)
 
 
 @access.route("/access-requests", methods=["POST"])

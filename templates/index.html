@@ -1,43 +1,142 @@
 {% extends "base.html" %}
 {% block title %}RAIDsystem{% endblock %}
 {% block content %}
-<div class="home-panel">
-    <div class="box-grid">
-        <a class="box box-languages" href="/languages">
-            <span class="box-icon">🌐</span>
-            <span class="box-title">Languages</span>
-            <span class="box-desc">Vocabulary, lessons &amp; practice</span>
-        </a>
-        <a class="box box-blog" href="/blog">
-            <span class="box-icon">📝</span>
-            <span class="box-title">Blog</span>
-            <span class="box-desc">Posts, updates &amp; announcements</span>
-        </a>
-        <a class="box box-library" href="/library">
-            <span class="box-icon">📚</span>
-            <span class="box-title">Library</span>
-            <span class="box-desc">Books &amp; reading resources</span>
-        </a>
-        <a class="box box-chat" href="/chat">
-            <span class="box-icon">💬</span>
-            <span class="box-title">Chat</span>
-            <span class="box-desc">Messages &amp; conversations</span>
-        </a>
-        <a class="box box-attendance" href="/attendance/history">
-            <span class="box-icon">🗓️</span>
-            <span class="box-title">Attendance</span>
-            <span class="box-desc">Check-in history</span>
-        </a>
-        <a class="box box-dashboard" href="/dashboard">
-            <span class="box-icon">📊</span>
-            <span class="box-title">Dashboard</span>
-            <span class="box-desc">Stats &amp; overview</span>
-        </a>
-        <a class="box box-internal-db" href="/internal-database">
-            <span class="box-icon">🗄️</span>
-            <span class="box-title">Internal Database</span>
-            <span class="box-desc">Admin only</span>
-        </a>
-    </div>
+{% if session.get('logged_in') and nav_current_level is defined %}
+{% set tier = nav_current_level | int %}
+<div class="portal-home">
+    <section class="portal-hero">
+        <div class="portal-hero-text">
+            <p class="portal-eyebrow">{{ home_greeting }}</p>
+            <h1 class="portal-hero-title">{{ home_display_name }}</h1>
+            <p class="portal-hero-sub">{{ nav_level_label(nav_current_level) | title }} &middot; {{ home_today }}</p>
+        </div>
+        <span class="portal-hero-badge">RAIDsystem</span>
+    </section>
+
+    <section class="portal-section">
+        <h2 class="portal-section-title">What's New in RAID</h2>
+        {% set has_library_extras = tier <= 4 and (home_new_books or home_new_people) %}
+        {% if home_posts or has_library_extras %}
+        <div class="whatsnew-slideshow" id="whatsnewSlideshow">
+            <div class="whatsnew-slides">
+                {% for post in home_posts %}
+                <a class="whatsnew-slide{% if loop.first %} active{% endif %}" href="{{ url_for('blog.view_post', post_id=post['id']) }}">
+                    <div class="whatsnew-slide-top">
+                        <span class="whatsnew-badge whatsnew-badge-blog">Blog</span>
+                        {% if post['is_internal'] %}<span class="blog-internal-badge">Internal</span>{% endif %}
+                    </div>
+                    <h3 class="whatsnew-slide-title">{{ post['title'] }}</h3>
+                    <p class="whatsnew-slide-meta">{{ home_blog_names.get(post['author_email'], post['author_email']) }} &middot; {{ post['created_at'] }}</p>
+                    <p class="whatsnew-slide-desc">{{ post['body'][:160] }}{% if post['body']|length > 160 %}&hellip;{% endif %}</p>
+                </a>
+                {% endfor %}
+                {% if tier <= 4 %}
+                {% for book in home_new_books %}
+                <a class="whatsnew-slide{% if loop.first and not home_posts %} active{% endif %}" href="/library#book-{{ book['id'] }}">
+                    <div class="whatsnew-slide-top">
+                        <span class="whatsnew-badge whatsnew-badge-library">Library</span>
+                    </div>
+                    <h3 class="whatsnew-slide-title">{{ book['title'] }}</h3>
+                    <p class="whatsnew-slide-meta">{{ book['author'] or 'Unknown author' }}</p>
+                    <p class="whatsnew-slide-desc">Newly added to the library.</p>
+                </a>
+                {% endfor %}
+                {% for person in home_new_people %}
+                <a class="whatsnew-slide{% if loop.first and not home_posts and not home_new_books %} active{% endif %}" href="mailto:{{ person['email'] }}">
+                    <div class="whatsnew-slide-top">
+                        <span class="whatsnew-badge whatsnew-badge-people">People</span>
+                    </div>
+                    <h3 class="whatsnew-slide-title">{{ person['name'] }}</h3>
+                    <p class="whatsnew-slide-meta">{{ person['role'] | title }} &middot; {{ person['email'] }}</p>
+                    <p class="whatsnew-slide-desc">New member of RAID.</p>
+                </a>
+                {% endfor %}
+                {% endif %}
+            </div>
+            <button type="button" class="whatsnew-arrow whatsnew-prev" aria-label="Previous">&#8249;</button>
+            <button type="button" class="whatsnew-arrow whatsnew-next" aria-label="Next">&#8250;</button>
+            <div class="whatsnew-dots"></div>
+        </div>
+        {% else %}
+        <p class="blog-empty">Nothing new yet.</p>
+        {% endif %}
+    </section>
+
+    {% if tier <= 4 %}
+    <section class="portal-section">
+        <div class="portal-section-header">
+            <h2 class="portal-section-title">My Library Loans</h2>
+            <a class="portal-section-link" href="/library">Go to Library</a>
+        </div>
+        {% if home_loans %}
+        <div class="loan-list">
+            {% for loan in home_loans %}
+            <div class="loan-row">
+                <span class="loan-title">{{ loan['title'] }}</span>
+                <span class="loan-meta">Borrowed {{ loan['issued_at'] }}</span>
+                <span class="request-status request-status-issued">Active</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="blog-empty">You have no active loans.</p>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    <section class="portal-section">
+        <h2 class="portal-section-title">Quick Access</h2>
+        <div class="tile-grid">
+            <a class="tile tile-blog" href="/blog">
+                <span class="tile-icon">📝</span>
+                <span class="tile-title">Blog</span>
+                <span class="tile-desc">Posts, updates &amp; announcements</span>
+            </a>
+            {% if tier <= 4 %}
+            <a class="tile tile-library" href="/library">
+                <span class="tile-icon">📚</span>
+                <span class="tile-title">Library</span>
+                <span class="tile-desc">Books &amp; reading resources</span>
+            </a>
+            {% endif %}
+            {% if tier <= 3 %}
+            <a class="tile tile-chat" href="/chat">
+                <span class="tile-icon">💬</span>
+                <span class="tile-title">Chat</span>
+                <span class="tile-desc">Messages &amp; conversations</span>
+            </a>
+            <a class="tile tile-attendance" href="/attendance/history">
+                <span class="tile-icon">🗓️</span>
+                <span class="tile-title">Attendance</span>
+                <span class="tile-desc">Check-in history</span>
+            </a>
+            <a class="tile tile-ai-chat" href="/ai-chat">
+                <span class="tile-icon">🤖</span>
+                <span class="tile-title">RAID Bot</span>
+                <span class="tile-desc">Ask the local assistant</span>
+            </a>
+            {% endif %}
+            {% if tier <= 1 %}
+            <a class="tile tile-dashboard" href="/dashboard">
+                <span class="tile-icon">📊</span>
+                <span class="tile-title">Dashboard</span>
+                <span class="tile-desc">Stats &amp; overview</span>
+            </a>
+            <a class="tile tile-internal-db" href="/internal-database">
+                <span class="tile-icon">🗄️</span>
+                <span class="tile-title">Internal Database</span>
+                <span class="tile-desc">Admin only</span>
+            </a>
+            {% endif %}
+        </div>
+    </section>
 </div>
+{% else %}
+<div class="portal-guest">
+    <span class="portal-guest-badge">RAIDsystem</span>
+    <h1>Internal Organizational Portal</h1>
+    <p>Sign in with your organization account to access blog updates, the library, chat, attendance records and internal tools.</p>
+    <a class="auth-submit-link" href="{{ url_for('auth.login') }}">Sign in</a>
+</div>
+{% endif %}
 {% endblock %}

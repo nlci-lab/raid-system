@@ -3,22 +3,53 @@
 {% block breadcrumb %}<a href="/">Home</a> / Profile{% endblock %}
 {% block content %}
 <h2>Profile</h2>
-<div class="auth-card">
+<div class="auth-card profile-card">
     {% if user %}
-    <dl class="modal-body">
-        <dt>ID</dt>
-        <dd>{{ user['id'] }}</dd>
-        <dt>Name</dt>
-        <dd>{{ user['name'] }}</dd>
-        <dt>Email</dt>
-        <dd>{{ user['email'] or email }}</dd>
-        <dt>Library Code</dt>
-        <dd>{{ user['library_code'] or '—' }}</dd>
-        <dt>Role</dt>
-        <dd>{{ user['role'] }}</dd>
+    {% set display_name = user['name'] or user['email'] or email %}
+    <div class="profile-header">
+        <div class="profile-avatar" aria-hidden="true">{{ (display_name or '?')[:1] | upper }}</div>
+        <div class="profile-header-info">
+            <div class="profile-name-row">
+                <h3 class="profile-name">{{ user['name'] or 'Unnamed user' }}</h3>
+                <span class="profile-badge">lvl-{{ '%g' % level }} ({{ level_label(level) }})</span>
+            </div>
+            <p class="profile-email">{{ user['email'] or email }}</p>
+        </div>
+    </div>
+    <dl class="profile-details">
+        <div class="profile-detail">
+            <dt>User ID</dt>
+            <dd>{{ user['id'] }}</dd>
+        </div>
+        <div class="profile-detail">
+            <dt>Library code</dt>
+            <dd>{{ user['library_code'] or '—' }}</dd>
+        </div>
     </dl>
     {% else %}
     <p>No user record found for {{ email }}.</p>
     {% endif %}
+    <div class="profile-footer">
+        <a class="logout-link" href="{{ url_for('auth.logout') }}">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Log out
+        </a>
+    </div>
+</div>
+
+<div class="auth-card">
+    <h2>Request access</h2>
+    <p class="auth-hint">Need access to a section you don't have? Tell an admin why and they'll review it.</p>
+    <form method="post" action="{{ url_for('access.submit_request') }}" class="auth-form">
+        <label for="section">Which section?</label>
+        <input type="text" id="section" name="section" placeholder="e.g. Dashboard, Internal Database, Chat..." required>
+        <label for="reason">Why do you need access?</label>
+        <textarea id="reason" name="reason" rows="4" placeholder="Explain why you need access..." required></textarea>
+        <button type="submit" class="auth-submit">Request permission</button>
+    </form>
 </div>
 {% endblock %}

@@ -27,9 +27,8 @@
         </div>
         <div class="blog-card-meta">
             {{ name_map.get(post['author_email'], post['author_email']) }} &middot; {{ post['created_at'] }}
-            &middot; {{ post['comment_count'] }} comment{{ 's' if post['comment_count'] != 1 else '' }}
         </div>
-        <div class="blog-card-excerpt">{{ post['body'][:180] }}{% if post['body']|length > 180 %}…{% endif %}</div>
+        <div class="blog-card-excerpt">{{ post['excerpt'] }}</div>
     </a>
     {% endfor %}
 </div>

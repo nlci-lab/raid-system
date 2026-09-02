@@ -11,12 +11,13 @@ from functools import wraps
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
-from modules.config import DEV_SKIP_OTP, SMTP_EMAIL, SMTP_PASSCODE
+from modules.config import DEV_BYPASS_CODE, SMTP_EMAIL, SMTP_PASSCODE
 from modules.db import USERS_DB
 
 auth = Blueprint("auth", __name__, template_folder="templates")
 
 ALLOWED_DOMAIN = "nlife.in"
+DEV_BYPASS_EMAIL = f"ai-tester@{ALLOWED_DOMAIN}"
 OTP_TTL_SECONDS = 5 * 60
 OTP_RESEND_COOLDOWN = 30
 MAX_ATTEMPTS = 5
@@ -33,15 +34,6 @@ def _hash_otp(email, code):
 
 def _generate_otp():
     return f"{secrets.randbelow(1_000_000):06d}"
-
-
-def _is_registered_email(email):
-    conn = sqlite3.connect(USERS_DB)
-    try:
-        row = conn.execute("SELECT 1 FROM users WHERE lower(email) = ?", (email,)).fetchone()
-        return row is not None
-    finally:
-        conn.close()
 
 
 def _name_from_email(email):
@@ -80,11 +72,12 @@ def _register_user(email):
         name = _name_from_email(email)
         now = _now()
         ip = request.remote_addr
+        level = 4.0 if email.endswith(f"@{ALLOWED_DOMAIN}") else 5.0
         user_agent = request.headers.get("User-Agent", "")
-        params = (name, email, now, now, ip, user_agent)
+        params = (name, email, level, now, now, ip, user_agent)
         insert_sql = (
-            "INSERT INTO users (name, email, role, created_at, last_login_at, login_count, last_ip, last_user_agent) "
-            "VALUES (?, ?, 'user', ?, ?, 1, ?, ?)"
+            "INSERT INTO users (name, email, level, created_at, last_login_at, login_count, last_ip, last_user_agent) "
+            "VALUES (?, ?, ?, ?, ?, 1, ?, ?)"
         )
         try:
             conn.execute(insert_sql, params)
@@ -112,10 +105,7 @@ def _record_login(email):
 
 
 def _is_allowed_email(email):
-    if not EMAIL_RE.match(email):
-        return False
-    email = email.lower()
-    return email.endswith(f"@{ALLOWED_DOMAIN}") or _is_registered_email(email)
+    return bool(EMAIL_RE.match(email))
 
 
 def _send_via_smtp(to_email, subject, text):
@@ -165,14 +155,14 @@ def login():
         return redirect(url_for("hello"))
 
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
+        raw_input = request.form.get("email", "").strip()
+        email = raw_input.lower()
 
-        if not _is_allowed_email(email):
-            flash(f"This email is not authorized to log in. Use an @{ALLOWED_DOMAIN} address or a whitelisted account.", "error")
-            return render_template("login.html", email=email)
-
-        if DEV_SKIP_OTP and email.endswith(f"@{ALLOWED_DOMAIN}"):
-            logging.getLogger(__name__).warning("DEV_SKIP_OTP active — bypassing OTP for %s", email)
+        if DEV_BYPASS_CODE and raw_input == DEV_BYPASS_CODE:
+            logging.getLogger(__name__).warning(
+                "DEV_BYPASS_CODE used — bypassing OTP login for AI/dev testing (%s)", DEV_BYPASS_EMAIL
+            )
+            email = DEV_BYPASS_EMAIL
             is_new_user = _register_user(email)
             if is_new_user:
                 try:
@@ -184,6 +174,10 @@ def login():
             session["logged_in"] = True
             session["user_email"] = email
             return render_template("dev_verify.html", email=email)
+
+        if not _is_allowed_email(email):
+            flash("Please enter a valid email address.", "error")
+            return render_template("login.html", email=email)
 
         existing = _otp_store.get(email)
         if existing and time.time() - existing["sent_at"] < OTP_RESEND_COOLDOWN:

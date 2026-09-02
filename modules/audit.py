@@ -11,6 +11,7 @@ from datetime import datetime
 from flask import request, session
 
 from modules.db import USERS_DB
+from modules.levels import level_label
 
 SCHEMA = """
     CREATE TABLE IF NOT EXISTS audit_log (
@@ -36,15 +37,15 @@ def log_action(module, action, details=""):
     try:
         conn.executescript(SCHEMA)
         email = session.get("user_email", "")
-        role_row = conn.execute(
-            "SELECT role FROM users WHERE lower(email) = ?", (email.lower(),)
+        level_row = conn.execute(
+            "SELECT level FROM users WHERE lower(email) = ?", (email.lower(),)
         ).fetchone() if email else None
         conn.execute(
             "INSERT INTO audit_log (actor_email, actor_role, module, action, details, ip_address, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 email,
-                role_row[0] if role_row else None,
+                level_label(level_row[0]) if level_row else None,
                 module,
                 action,
                 details,

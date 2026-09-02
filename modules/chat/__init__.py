@@ -1,13 +1,28 @@
 import sqlite3
 from datetime import datetime
+from functools import wraps
 from io import BytesIO
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, send_file, session, url_for
 from werkzeug.utils import secure_filename
 
 from modules.db import CHAT_DB, USERS_DB
+from modules.levels import MANAGER_LEVEL, current_level, tier
 
 chat = Blueprint("chat", __name__, template_folder="templates")
+
+
+def staff_required(view):
+    """dev/admin/data_manager/raid_staff only — viewer and external don't get chat."""
+
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        level = current_level()
+        if level is None or tier(level) > MANAGER_LEVEL:
+            abort(403)
+        return view(*args, **kwargs)
+
+    return wrapped
 
 
 SCHEMA = """
@@ -106,6 +121,7 @@ def list_conversations(conn, email):
 
 
 @chat.route("/chat")
+@staff_required
 def index():
     email = session["user_email"]
     conn = get_conn()
@@ -117,6 +133,7 @@ def index():
 
 
 @chat.route("/chat/dm/start", methods=["POST"])
+@staff_required
 def start_dm():
     email = session["user_email"]
     target = request.form.get("email", "").strip().lower()
@@ -156,6 +173,7 @@ def start_dm():
 
 
 @chat.route("/chat/group/create", methods=["POST"])
+@staff_required
 def create_group():
     email = session["user_email"]
     name = request.form.get("name", "").strip()
@@ -189,6 +207,7 @@ def create_group():
 
 
 @chat.route("/chat/<int:conversation_id>")
+@staff_required
 def conversation(conversation_id):
     email = session["user_email"]
     conn = get_conn()
@@ -256,6 +275,7 @@ def conversation(conversation_id):
 
 
 @chat.route("/chat/<int:conversation_id>/send", methods=["POST"])
+@staff_required
 def send_message(conversation_id):
     email = session["user_email"]
     conn = get_conn()
@@ -294,6 +314,7 @@ def send_message(conversation_id):
 
 
 @chat.route("/chat/<int:conversation_id>/add-member", methods=["POST"])
+@staff_required
 def add_member(conversation_id):
     email = session["user_email"]
     conn = get_conn()
@@ -322,6 +343,7 @@ def add_member(conversation_id):
 
 
 @chat.route("/chat/attachment/<int:attachment_id>")
+@staff_required
 def download_attachment(attachment_id):
     email = session["user_email"]
     conn = get_conn()

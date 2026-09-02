@@ -7,7 +7,210 @@ document.addEventListener("DOMContentLoaded", () => {
     setupChatThread();
     setupDashboardNav();
     setupGenreTabs();
+    setupToasts();
+    setupPortalSearch();
+    setupWhatsNewSlideshow();
+    setupMarkdownRender();
 });
+
+/* Renders raw Markdown into HTML entirely client-side: the server only ever
+   sends the source text (base64-encoded so no character in it can break out
+   of the HTML attribute it sits in), and the browser converts it here with
+   marked, then sanitizes the result with DOMPurify before it touches the
+   DOM — the source may come from another user's blog post, so it's treated
+   as untrusted regardless of how well-formed we expect it to be. */
+function setupMarkdownRender() {
+    document.querySelectorAll(".md-render[data-md-b64]").forEach((el) => {
+        const source = new TextDecoder("utf-8").decode(
+            Uint8Array.from(atob(el.dataset.mdB64), (c) => c.charCodeAt(0))
+        );
+        const html = marked.parse(source);
+        el.innerHTML = DOMPurify.sanitize(html);
+    });
+}
+
+/* Home page "What's New in RAID" slideshow: fades between blog/library
+   slides on a timer, with arrow + dot controls that reset the timer. */
+function setupWhatsNewSlideshow() {
+    const root = document.getElementById("whatsnewSlideshow");
+    if (!root) return;
+
+    const track = root.querySelector(".whatsnew-slides");
+    const slides = Array.from(track.children);
+
+    /* Shuffle the slide order on every load so the feed doesn't always open
+       on the same item — the server always renders blog posts before
+       library books with the first post marked active, so that ordering
+       has to be scrambled (and "active" reassigned) client-side. */
+    for (let i = slides.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [slides[i], slides[j]] = [slides[j], slides[i]];
+    }
+    slides.forEach((slide) => {
+        slide.classList.remove("active");
+        track.appendChild(slide);
+    });
+
+    if (slides.length === 0) return;
+    if (slides.length === 1) {
+        slides[0].classList.add("active");
+        root.querySelectorAll(".whatsnew-arrow, .whatsnew-dots").forEach((el) => el.remove());
+        return;
+    }
+    slides[0].classList.add("active");
+
+    const dotsContainer = root.querySelector(".whatsnew-dots");
+    dotsContainer.innerHTML = slides
+        .map((_, i) => `<button type="button" class="whatsnew-dot${i === 0 ? " active" : ""}" data-index="${i}" aria-label="Go to slide ${i + 1}"></button>`)
+        .join("");
+    const dots = Array.from(dotsContainer.querySelectorAll(".whatsnew-dot"));
+
+    let current = 0;
+    let timer = null;
+
+    function show(index) {
+        slides[current].classList.remove("active");
+        dots[current].classList.remove("active");
+        current = (index + slides.length) % slides.length;
+        slides[current].classList.add("active");
+        dots[current].classList.add("active");
+    }
+
+    function restart() {
+        clearInterval(timer);
+        timer = setInterval(() => show(current + 1), 5000);
+    }
+
+    root.querySelector(".whatsnew-prev").addEventListener("click", (e) => {
+        e.preventDefault();
+        show(current - 1);
+        restart();
+    });
+    root.querySelector(".whatsnew-next").addEventListener("click", (e) => {
+        e.preventDefault();
+        show(current + 1);
+        restart();
+    });
+    dots.forEach((dot) => {
+        dot.addEventListener("click", () => {
+            show(Number(dot.dataset.index));
+            restart();
+        });
+    });
+
+    root.addEventListener("mouseenter", () => clearInterval(timer));
+    root.addEventListener("mouseleave", restart);
+
+    restart();
+}
+
+/* Header-wide search box: debounced fetch to /search?q=..., grouped
+   dropdown of matching blog posts, library books and people. */
+function setupPortalSearch() {
+    const input = document.getElementById("portalSearchInput");
+    const results = document.getElementById("portalSearchResults");
+    if (!input || !results) return;
+
+    let debounceTimer = null;
+    let activeRequest = 0;
+
+    function closeResults() {
+        results.hidden = true;
+        results.innerHTML = "";
+    }
+
+    function escapeHtml(str) {
+        return (str || "").replace(/[&<>"']/g, (c) => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+        }[c]));
+    }
+
+    function renderGroup(label, items, toHtml) {
+        if (!items.length) return "";
+        return `<div class="portal-search-group">
+            <div class="portal-search-group-label">${label}</div>
+            ${items.map(toHtml).join("")}
+        </div>`;
+    }
+
+    function render(data) {
+        const html = [
+            renderGroup("Blog", data.posts, (p) => `<a class="portal-search-item" href="/blog/${p.id}">${escapeHtml(p.title)}</a>`),
+            renderGroup("Library", data.books, (b) => `<a class="portal-search-item" href="/library#book-${b.id}">${escapeHtml(b.title)}<span class="portal-search-item-sub">${escapeHtml(b.author || "")}</span></a>`),
+            renderGroup("People", data.people, (p) => `<a class="portal-search-item" href="mailto:${escapeHtml(p.email)}">${escapeHtml(p.name || p.email)}<span class="portal-search-item-sub">${escapeHtml(p.email)}</span></a>`),
+        ].join("");
+
+        if (!html) {
+            results.innerHTML = '<div class="portal-search-empty">No matches</div>';
+        } else {
+            results.innerHTML = html;
+        }
+        results.hidden = false;
+    }
+
+    input.addEventListener("input", () => {
+        const q = input.value.trim();
+        clearTimeout(debounceTimer);
+        if (q.length < 2) {
+            closeResults();
+            return;
+        }
+        debounceTimer = setTimeout(() => {
+            const requestId = ++activeRequest;
+            fetch(`/search?q=${encodeURIComponent(q)}`)
+                .then((r) => r.json())
+                .then((data) => {
+                    if (requestId === activeRequest) render(data);
+                })
+                .catch(() => {});
+        }, 200);
+    });
+
+    input.addEventListener("focus", () => {
+        if (results.innerHTML) results.hidden = false;
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".portal-search")) closeResults();
+    });
+
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            closeResults();
+            input.blur();
+        }
+    });
+}
+
+/* Uniform warning/notice popup: every flashed message (login errors, form
+   confirmations, "not allowed" notices, etc.) shows the same way — a toast
+   that fades in, sits for 3s, then fades out and removes itself. */
+function setupToasts() {
+    const messages = window.__flashMessages || [];
+    if (!messages.length) return;
+
+    const container = document.createElement("div");
+    container.className = "toast-container";
+    document.body.appendChild(container);
+
+    messages.forEach(([category, message], i) => {
+        setTimeout(() => showToast(container, message, category), i * 150);
+    });
+}
+
+function showToast(container, message, category) {
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${category || "info"}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add("toast-visible"));
+
+    setTimeout(() => {
+        toast.classList.remove("toast-visible");
+        toast.addEventListener("transitionend", () => toast.remove(), { once: true });
+    }, 3000);
+}
 
 function setupDashboardNav() {
     const sidebar = document.querySelector(".dashboard-sidebar");

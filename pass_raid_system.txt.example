@@ -1,8 +1,7 @@
 {
-    "email_id": "",
-    "passcode": "",
+    "email_id": "your-smtp-account@gmail.com",
+    "passcode": "your-app-password",
     "sheet_url": "",
-    "secret_key": "",
-    "resend_api_key": "",
-    "resend_from_email": ""
+    "secret_key": "replace-with-a-random-secret-key",
+    "dev_bypass_code": "DEV-replace-with-your-own-code"
 }

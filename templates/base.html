@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}RAIDsystem{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    <script>window.__flashMessages = {{ messages|tojson }};</script>
+    {% endwith %}
+    <script src="{{ url_for('static', filename='js/vendor/marked.umd.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/vendor/purify.min.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
 </head>
 <body>
@@ -13,25 +18,39 @@
         <div class="header-right">
             <div class="breadcrumb">{% block breadcrumb %}{% endblock %}</div>
             {% if session.get('logged_in') %}
+            <div class="portal-search">
+                <input type="search" id="portalSearchInput" class="portal-search-input" placeholder="Search books, posts, people&hellip;" autocomplete="off">
+                <div id="portalSearchResults" class="portal-search-results" hidden></div>
+            </div>
             <div class="user-info">
-                <a class="user-email" href="{{ url_for('access.profile') }}">{{ session.get('user_email') }}</a>
-                <a class="logout-link" href="{{ url_for('auth.logout') }}">Log out</a>
+                <a class="user-icon" href="{{ url_for('access.profile') }}" title="{{ session.get('user_email') }}" aria-label="Profile">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="8" r="4"></circle>
+                        <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"></path>
+                    </svg>
+                </a>
+                {% if nav_is_dev %}
+                <form class="view-as-form" method="post" action="{{ url_for('dashboard.set_view_as') }}">
+                    <select name="level" onchange="this.form.submit()">
+                        <option value="__reset__" {% if not nav_viewing_as %}selected{% endif %}>real: lvl-{{ '%g' % nav_real_level }} ({{ nav_level_label(nav_real_level) }})</option>
+                        {% for lvl in nav_view_as_levels %}
+                        <option value="{{ '%g' % lvl }}" {% if nav_viewing_as and nav_current_level == lvl %}selected{% endif %}>view as lvl-{{ '%g' % lvl }} ({{ nav_level_label(lvl) }})</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% else %}
+                <span class="level-badge">lvl-{{ '%g' % nav_current_level }} ({{ nav_level_label(nav_current_level) }})</span>
+                {% endif %}
             </div>
             {% endif %}
         </div>
     </header>
     <main>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="flash-messages">
-            {% for category, message in messages %}
-            <div class="flash flash-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
         {% block content %}{% endblock %}
     </main>
+    <footer class="site-footer">
+        <span class="version-badge">RAIDsystem v{{ app_version }}</span>
+    </footer>
     <div id="detail-modal" class="modal-overlay" hidden>
         <div class="modal" role="dialog" aria-modal="true">
             <button type="button" class="modal-close" aria-label="Close">&times;</button>

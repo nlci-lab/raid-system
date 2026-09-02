@@ -7,17 +7,9 @@
     <label for="title">Title</label>
     <input type="text" id="title" name="title" value="{{ title }}" required>
 
-    <label for="body">Body</label>
-    <div class="format-toolbar" data-target="body">
-        <button type="button" data-wrap="**">Bold</button>
-        <button type="button" data-wrap="*">Italic</button>
-        <button type="button" data-wrap="`">Code</button>
-        <button type="button" data-prefix-line="### ">Heading</button>
-        <button type="button" data-prefix-line="- ">List</button>
-        <button type="button" data-wrap="[|](https://)">Link</button>
-    </div>
-    <textarea id="body" name="body" rows="12" required>{{ body }}</textarea>
-    <p class="format-hint">Supports **bold**, *italic*, `code`, # headings, - lists, [text](url) links.</p>
+    <label for="md_file">Post content (.md file)</label>
+    <input type="file" id="md_file" name="md_file" accept=".md" required>
+    <p class="format-hint">Upload a Markdown (.md) file — its contents become the post body.</p>
 
     <label class="blog-checkbox-label">
         <input type="checkbox" name="is_internal" value="1" {% if is_internal %}checked{% endif %}>

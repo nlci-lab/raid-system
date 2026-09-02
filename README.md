@@ -1,8 +1,6 @@
 # RAID System
 
-Public demo mirror of the internal Flask web application built for NLCI's RAID department (Research and Information Department). It brings several day-to-day departmental workflows — a library catalog, an internal language database, team chat, a blog, book loans, attendance tracking, and access-request handling — into a single portal with role-based permissions.
-
-This repo ships with synthetic placeholder data only (see [Demo data](#demo-data)) so the app can be explored and evaluated without exposing any real member or organizational records.
+Public demo mirror of the internal Flask web application built for NLCI's RAID department (Research and Information Department). It brings several day-to-day departmental workflows — a library catalog, an internal language database, team chat, a blog, book loans, attendance tracking, and access-request handling — into a single portal with role-based permissions. The `db/` folder ships with synthetic, non-real data (placeholder names like `user1`, `lang1`, `book1`) so the app runs out of the box without exposing any real member or organizational records.
 
 ## Features
 
@@ -31,10 +29,6 @@ Permissions are governed by a numeric level on each user (lower = more privilege
 | 4 | viewer |
 | 5 | external |
 | 6 | anonymous |
-
-## Demo data
-
-The `db/` folder ships with synthetic, non-real data only (placeholder names like `user1`, `lang1`, `book1`) so the app runs out of the box without exposing any real member or organizational records.
 
 ## Setup
 

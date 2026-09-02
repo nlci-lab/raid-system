@@ -1,6 +1,6 @@
 # RAID System
 
-Internal Flask app for NLCI's RAID department (library, language database, chat, blog, loans, attendance, access requests).
+Public demo mirror of the Flask app built for NLCI's RAID department — covering library management, a language database, chat, blog, loans, attendance, and access requests. This repo ships with synthetic placeholder data so the app can be explored without exposing any real member or organizational records.
 
 ## Demo data
 

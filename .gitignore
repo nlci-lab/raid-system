@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+
+# Virtual envs (not used per standing convention, but ignore defensively)
+.venv/
+venv/
+env/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Anything that shouldn't ever end up inside core/ by accident — the real
+# copies of these live as siblings of this folder (raid_system/db/,
+# raid_system/logs/, raid_system/pass_raid_system.txt) and must never be
+# committed here.
+*.db
+*.sqlite
+*.sqlite3
+*.log
+pass_raid_system.txt
+.env
+
+# Stray backup files left behind during editing (e.g. foo.html.bak.20260813) —
+# never intentional commits, just editor/dev cruft.
+*.bak
+*.bak.*
+*~

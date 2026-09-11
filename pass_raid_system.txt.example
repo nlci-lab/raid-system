@@ -1,0 +1,15 @@
+{
+  "secret_key": "REPLACE_WITH_A_LONG_RANDOM_STRING",
+  "email_id": "your-dev-gmail-address@gmail.com",
+  "passcode": "your-gmail-app-password-with-spaces-removed-automatically",
+
+  "resend_api_key": null,
+  "resend_from_email": null,
+
+  "brevo_api_key": null,
+  "brevo_from_email": null,
+  "brevo_from_name": "RAIDsystem",
+
+  "dev_bypass_code": "DEV-replace-with-your-own-random-string",
+  "dev_emails": []
+}

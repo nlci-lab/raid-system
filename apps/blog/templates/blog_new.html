@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — New Post{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / <a href="{{ url_for('blog.index') }}">Blog</a> / New{% endblock %}
+{% block content %}
+<h2>New Post</h2>
+<form class="blog-form" method="post" enctype="multipart/form-data">
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" value="{{ title }}" required>
+
+    <label for="md_file">Post content (.md file)</label>
+    <input type="file" id="md_file" name="md_file" accept=".md" required>
+    <p class="format-hint">Upload a Markdown (.md) file — its contents become the post body.</p>
+
+    <label class="blog-checkbox-label">
+        <input type="checkbox" name="is_internal" value="1" {% if is_internal %}checked{% endif %}>
+        Internal Talk — requires login to view
+    </label>
+
+    <label for="files">Attachments</label>
+    <input type="file" id="files" name="files" multiple>
+
+    <button type="submit">Publish</button>
+</form>
+{% endblock %}

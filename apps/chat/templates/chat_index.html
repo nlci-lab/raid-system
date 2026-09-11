@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Chat{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / Chat{% endblock %}
+{% block content %}
+<div class="chat-app">
+    {% include "chat_sidebar.html" %}
+    <div class="chat-main chat-main-empty">
+        <div class="chat-empty-state">
+            <span class="chat-empty-icon">💬</span>
+            <p>Select a chat to start messaging</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

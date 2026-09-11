@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — {{ post['title'] }}{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / <a href="{{ url_for('blog.index') }}">Blog</a> / {{ post['title'] }}{% endblock %}
+{% block content %}
+<article class="blog-post">
+    <div class="blog-post-header">
+        <h2>
+            {{ post['title'] }}
+            {% if post['is_internal'] %}<span class="blog-internal-badge">Internal</span>{% endif %}
+        </h2>
+        <div class="blog-post-meta">
+            {{ name_map.get(post['author_email'], post['author_email']) }} &middot; {{ post['created_at'] }}
+            {% if post['updated_at'] != post['created_at'] %} &middot; edited {{ post['updated_at'] }}{% endif %}
+        </div>
+        {% if is_owner or can_delete %}
+        <div class="blog-post-actions">
+            {% if is_owner %}
+            <a href="{{ url_for('blog.edit_post', post_id=post['id']) }}">Edit</a>
+            {% endif %}
+            {% if can_delete %}
+            <form method="post" action="{{ url_for('blog.delete_post', post_id=post['id']) }}" onsubmit="return confirm('Delete this post?');">
+                <button type="submit" class="link-button">Delete</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    <div class="blog-post-body md-render" data-md-b64="{{ post_body_b64 }}"></div>
+
+    {% if attachments %}
+    <div class="blog-post-attachments">
+        {% for att in attachments %}
+        <a class="blog-attachment" href="{{ url_for('blog.download_attachment', attachment_id=att['id']) }}">
+            📎 {{ att['filename'] }} <span class="blog-attachment-size">({{ (att['size'] / 1024) | round(1) }} KB)</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</article>
+{% endblock %}

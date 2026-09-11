@@ -1,0 +1,59 @@
+<aside class="chat-sidebar-list">
+    <div class="chat-sidebar-header">
+        <h2>Chats</h2>
+        <div class="chat-sidebar-actions">
+            <details class="chat-popover">
+                <summary title="New chat">✏️</summary>
+                <div class="chat-popover-panel">
+                    <form class="chat-new-form" method="post" action="{{ url_for('chat.start_dm') }}">
+                        <label for="dm-email">New chat</label>
+                        <select name="email" id="dm-email" required>
+                            <option value="" disabled selected>Choose a person…</option>
+                            {% for user in directory %}
+                            <option value="{{ user['email'] }}">{{ user['name'] }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit">Start chat</button>
+                    </form>
+                </div>
+            </details>
+            <details class="chat-popover">
+                <summary title="New group">👥</summary>
+                <div class="chat-popover-panel">
+                    <form class="chat-new-form chat-group-form" method="post" action="{{ url_for('chat.create_group') }}">
+                        <label for="group-name">New group</label>
+                        <input type="text" id="group-name" name="name" placeholder="Group name" required>
+                        <div class="chat-member-picker">
+                            {% for user in directory %}
+                            <label class="chat-member-option">
+                                <input type="checkbox" name="members" value="{{ user['email'] }}">
+                                {{ user['name'] }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <button type="submit">Create group</button>
+                    </form>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    {% if conversations %}
+    <div class="chat-list">
+        {% for c in conversations %}
+        <a class="chat-list-item {{ 'active' if c['id'] == active_id else '' }}" href="{{ url_for('chat.conversation', conversation_id=c['id']) }}">
+            <span class="chat-avatar">{{ c['title'][0] | upper }}</span>
+            <span class="chat-list-body">
+                <span class="chat-list-row1">
+                    <span class="chat-list-title">{{ c['title'] }}</span>
+                    {% if c['last_at'] %}<span class="chat-list-time">{{ c['last_at'] }}</span>{% endif %}
+                </span>
+                <span class="chat-list-preview">{{ c['last_message'] or 'No messages yet' }}</span>
+            </span>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="chat-empty chat-sidebar-empty">No conversations yet. Start a chat or create a group above.</p>
+    {% endif %}
+</aside>

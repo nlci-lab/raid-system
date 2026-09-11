@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Internal Database{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / Internal Database{% endblock %}
+{% block content %}
+<div class="dashboard-app full-width-page">
+    <nav class="dashboard-sidebar">
+        {% for name in db_names %}
+        <a class="dashboard-nav-item{{ ' active' if name == active_db else '' }}" href="{{ url_for('ildb.index', db=name) }}">
+            <span class="dashboard-nav-icon">🗄️</span>
+            <span class="dashboard-nav-label">{{ name }}</span>
+        </a>
+        {% endfor %}
+    </nav>
+
+    <div class="dashboard-content">
+    {% if active_db %}
+        <h2>{{ active_db }}.db</h2>
+
+        {% if tables %}
+        <div class="ildb-table-tabs">
+            {% for t in tables %}
+            <a class="ildb-table-tab{{ ' active' if t == table else '' }}" href="{{ url_for('ildb.index', db=active_db, table=t) }}">{{ t }}</a>
+            {% endfor %}
+        </div>
+
+        <div class="table-wrap">
+        <table class="data-table" id="ildbTable"{{ ' data-no-search data-no-sort' if not rows else '' }}>
+            <thead>
+            <tr>
+                {% for c in columns %}<th>{{ c }}</th>{% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+            <tr>
+                {% for c in columns %}<td>{{ row[c] if row[c] is not none else '' }}</td>{% endfor %}
+            </tr>
+            {% else %}
+            <tr><td colspan="{{ columns|length }}">No rows in "{{ table }}" yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="ildb-empty">No tables in {{ active_db }}.db.</div>
+        {% endif %}
+    {% else %}
+        <div class="ildb-empty">No databases found in db/.</div>
+    {% endif %}
+    </div>
+</div>
+{% endblock %}

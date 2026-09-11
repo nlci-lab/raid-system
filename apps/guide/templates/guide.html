@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Guide{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / Guide{% endblock %}
+{% block content %}
+<div class="guide-layout">
+    <nav class="guide-toc">
+        {% for chapter in chapters %}
+        <a class="guide-toc-link{% if chapter['slug'] == active_slug %} active{% endif %}"
+           href="{{ url_for('guide.view', slug=chapter['slug']) }}">{{ chapter['title'] }}</a>
+        {% endfor %}
+    </nav>
+    <article class="guide-content md-render" data-md-b64="{{ content_b64 }}"></article>
+</div>
+{% endblock %}

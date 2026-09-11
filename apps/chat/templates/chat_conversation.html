@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — {{ title }}{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / <a href="{{ url_for('chat.index') }}">Chat</a> / {{ title }}{% endblock %}
+{% block content %}
+<div class="chat-app">
+    {% include "chat_sidebar.html" %}
+    <div class="chat-main">
+        <div class="chat-header">
+            <span class="chat-avatar chat-avatar-lg">{{ title[0] | upper }}</span>
+            <div class="chat-header-info">
+                <span class="chat-header-title">{{ title }}</span>
+                <span class="chat-header-sub">{{ members|length }} member{{ 's' if members|length != 1 else '' }}</span>
+            </div>
+            {% if convo['is_group'] %}
+            <details class="chat-popover chat-info-popover">
+                <summary title="Group info">ℹ️</summary>
+                <div class="chat-popover-panel chat-info-panel">
+                    <h3>Members</h3>
+                    <ul class="chat-member-list">
+                        {% for member in members %}
+                        <li>
+                            {{ name_map.get(member['user_email'], member['user_email']) }}
+                            {% if member['is_admin'] %}<span class="chat-admin-badge">admin</span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% if is_admin %}
+                    <h3>Add member</h3>
+                    <form class="chat-add-member-form" method="post" action="{{ url_for('chat.add_member', conversation_id=convo['id']) }}">
+                        <select name="email" required>
+                            <option value="" disabled selected>Choose a person…</option>
+                            {% for user in addable_users %}
+                            <option value="{{ user['email'] }}">{{ user['name'] }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit">Add</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </details>
+            {% endif %}
+        </div>
+
+        <div class="chat-thread" id="chat-thread">
+            {% set ns = namespace(prev_sender=None) %}
+            {% for message in messages %}
+            {% set is_own = message['sender_email'] == my_email %}
+            <div class="chat-message {{ 'own' if is_own else '' }}">
+                {% if convo['is_group'] and not is_own and message['sender_email'] != ns.prev_sender %}
+                <span class="chat-message-sender">{{ name_map.get(message['sender_email'], message['sender_email']) }}</span>
+                {% endif %}
+                {% if message['body'] %}<p class="chat-message-body">{{ message['body'] }}</p>{% endif %}
+                {% for att in attachments_by_message.get(message['id'], []) %}
+                <a class="chat-attachment" href="{{ url_for('chat.download_attachment', attachment_id=att['id']) }}">
+                    📎 {{ att['filename'] }} <span class="chat-attachment-size">({{ (att['size'] / 1024) | round(1) }} KB)</span>
+                </a>
+                {% endfor %}
+                <span class="chat-message-time">{{ message['created_at'] }}</span>
+            </div>
+            {% set ns.prev_sender = message['sender_email'] %}
+            {% else %}
+            <p class="chat-empty">No messages yet. Say hello!</p>
+            {% endfor %}
+        </div>
+
+        <form class="chat-send-form" method="post" action="{{ url_for('chat.send_message', conversation_id=convo['id']) }}" enctype="multipart/form-data">
+            <label class="chat-attach-btn" title="Attach files">
+                📎
+                <input type="file" name="files" multiple hidden>
+                <span class="chat-attach-count"></span>
+            </label>
+            <textarea name="body" placeholder="Message" rows="1"></textarea>
+            <button type="submit" class="chat-send-btn" title="Send">➤</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Mark Attendance{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / <a href="/attendance/history">Attendance</a> / Mark{% endblock %}
+{% block content %}
+<h2>Mark Attendance</h2>
+<form class="date-picker-form" method="get" action="{{ url_for('attendance.index') }}">
+    <label for="date">Date</label>
+    <input type="date" id="date" name="date" value="{{ day }}" onchange="this.form.submit()">
+</form>
+<form method="post" action="{{ url_for('attendance.mark') }}">
+    <input type="hidden" name="date" value="{{ day }}">
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+            <tr>
+                <th>SlNo</th>
+                <th>Name</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ user['name'] }}</td>
+                <td>
+                    <select name="status_{{ user['id'] }}">
+                        <option value="">—</option>
+                        {% for status in statuses %}
+                        <option value="{{ status }}" {% if marked.get(user['id']) == status %}selected{% endif %}>{{ status|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <button type="submit">Save attendance</button>
+</form>
+{% endblock %}

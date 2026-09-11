@@ -77,13 +77,33 @@ VIEW_AS_LEVELS = sorted({0.0, 1.0, 2.0, 3.0, 4.0, 5.0, ANONYMOUS_LEVEL, *SUB_LEV
 @app.context_processor
 def inject_level_nav():
     """Every page gets the current user's effective level in context — a
-    badge for everyone, plus (for a real, non-simulated dev) the data needed
-    to render the view-as switcher. See templates/base.html."""
+    badge for everyone (including anonymous visitors on public pages like
+    the home page), plus (for a real, non-simulated dev) the data needed
+    to render the view-as switcher. See templates/base.html. Always returns
+    the full key set — base.html references nav_current_level
+    unconditionally, so an anonymous/not-logged-in visit must still get a
+    sensible default (ANONYMOUS_LEVEL) rather than an empty context, which
+    previously crashed the public home page with a 500 (found live on
+    raid-server 2026-09-11, hotfixed there, now ported back here)."""
     if not session.get("logged_in"):
-        return {}
+        return {
+            "nav_current_level": ANONYMOUS_LEVEL,
+            "nav_real_level": ANONYMOUS_LEVEL,
+            "nav_is_dev": False,
+            "nav_viewing_as": False,
+            "nav_level_label": level_label,
+            "nav_view_as_levels": VIEW_AS_LEVELS,
+        }
     r_level = real_level()
     if r_level is None:
-        return {}
+        return {
+            "nav_current_level": ANONYMOUS_LEVEL,
+            "nav_real_level": ANONYMOUS_LEVEL,
+            "nav_is_dev": False,
+            "nav_viewing_as": False,
+            "nav_level_label": level_label,
+            "nav_view_as_levels": VIEW_AS_LEVELS,
+        }
     return {
         "nav_current_level": current_level(),
         "nav_real_level": r_level,

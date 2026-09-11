@@ -51,10 +51,16 @@ def sync_books_from_sheet(csv_url):
     fieldnames = {name.strip(): name for name in reader.fieldnames}
 
     # Validate and transform rows. Columns whose sheet header starts with "_"
-    # (_id, _ok, _scanned, _shelf_name, _case_number, _case_id) are skipped
-    # entirely -- not read, not stored. Book identity is therefore no longer
-    # tied to a stable sheet-provided id; each sync rebuilds the table from
-    # scratch and SQLite assigns fresh autoincrement ids in CSV row order.
+    # (_id, _ok, _scanned, _shelf_name, _case_number, _case_id) are physical/
+    # data-entry tracking fields, not shown anywhere in the app UI (see
+    # apps/library/templates/library_index.html, which only ever renders
+    # the 9 public catalog fields) -- but they ARE fetched and stored below
+    # (stripped of their leading underscore for clarity: sheet_id, ok,
+    # scanned, shelf_name, case_number, case_id), in case they're ever
+    # needed. Book identity is still not tied to the sheet's own _id across
+    # resyncs -- each sync rebuilds the table from scratch and SQLite
+    # assigns fresh autoincrement ids in CSV row order; sheet_id is stored
+    # as a plain reference value only, not used as a key anywhere.
     book_records = []
     skipped = []
     for i, row in enumerate(rows, start=2):  # Start at 2 to account for header
@@ -89,6 +95,14 @@ def sync_books_from_sheet(csv_url):
                 "library_id": row_clean.get("library_id", ""),
                 "l_id": row_clean.get("L_id", ""),
                 "link_to_toc": row_clean.get("link_to_toc", ""),
+                # Underscore-prefixed sheet columns -- fetched and stored,
+                # never rendered in the app (see comment above).
+                "sheet_id": row_clean.get("_id", ""),
+                "ok": row_clean.get("_ok", ""),
+                "scanned": row_clean.get("_scanned", ""),
+                "shelf_name": row_clean.get("_shelf_name", ""),
+                "case_number": row_clean.get("_case_number", ""),
+                "case_id": row_clean.get("_case_id", ""),
             })
         except Exception as e:
             skipped.append(f"Row {i}: {str(e)}")
@@ -115,7 +129,13 @@ def sync_books_from_sheet(csv_url):
                 volume TEXT,
                 library_id TEXT,
                 l_id TEXT,
-                link_to_toc TEXT
+                link_to_toc TEXT,
+                sheet_id TEXT,
+                ok TEXT,
+                scanned TEXT,
+                shelf_name TEXT,
+                case_number TEXT,
+                case_id TEXT
             )
         """)
 
@@ -123,11 +143,13 @@ def sync_books_from_sheet(csv_url):
         for rec in book_records:
             conn.execute("""
                 INSERT INTO books
-                (title, genre, series, publish_year, author, volume, library_id, l_id, link_to_toc)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (title, genre, series, publish_year, author, volume, library_id, l_id, link_to_toc,
+                 sheet_id, ok, scanned, shelf_name, case_number, case_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 rec["title"], rec["genre"], rec["series"], rec["publish_year"],
-                rec["author"], rec["volume"], rec["library_id"], rec["l_id"], rec["link_to_toc"]
+                rec["author"], rec["volume"], rec["library_id"], rec["l_id"], rec["link_to_toc"],
+                rec["sheet_id"], rec["ok"], rec["scanned"], rec["shelf_name"], rec["case_number"], rec["case_id"]
             ))
 
         conn.commit()

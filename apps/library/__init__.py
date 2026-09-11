@@ -203,6 +203,34 @@ def _my_tab_counts(conn, user):
     return {"pending": pending, "issued": issued}
 
 
+def _all_pending_requests(conn):
+    """Every request awaiting an admin decision, across all users — the
+    admin panel's queue, as opposed to _my_requests' one-user view."""
+    return conn.execute(
+        """SELECT loans.id, loans.requested_at, books.title, books.author,
+                  users.users.name AS requester_name, users.users.email AS requester_email
+           FROM loans
+           JOIN books ON books.id = loans.book_id
+           JOIN users.users ON users.users.id = loans.requested_by
+           WHERE loans.status = 'pending'
+           ORDER BY loans.requested_at ASC, loans.id ASC"""
+    ).fetchall()
+
+
+def _all_active_loans(conn):
+    """Every currently-issued (not yet returned) loan, across all users —
+    the admin panel's "who has what" view."""
+    return conn.execute(
+        """SELECT loans.id, loans.taken_at, loans.approved_by, books.title, books.author,
+                  users.users.name AS holder_name, users.users.email AS holder_email
+           FROM loans
+           JOIN books ON books.id = loans.book_id
+           JOIN users.users ON users.users.id = loans.requested_by
+           WHERE loans.status = 'issued'
+           ORDER BY loans.taken_at ASC, loans.id ASC"""
+    ).fetchall()
+
+
 def _book_availability(conn, book_id):
     """Derive current availability status for a book.
     Returns 'Taken' if an open issued loan exists (status='issued', returned_at IS NULL),
@@ -400,3 +428,22 @@ def sync_from_sheet():
         flash(f"Sync failed: {str(e)}", "error")
 
     return redirect(request.referrer or url_for("library.index"))
+
+
+@library.route("/library/admin")
+@admin_required
+def admin_panel():
+    """Dedicated library admin panel — consolidates the sheet-sync/source
+    actions (moved here from the catalog toolbar) plus admin queues for
+    pending requests and active loans, pulled from across all users
+    (distinct from the per-user My Requests/My Loans tabs on /library)."""
+    conn = get_conn()
+    pending_requests = _all_pending_requests(conn)
+    active_loans = _all_active_loans(conn)
+    conn.close()
+    return render_template(
+        "library_admin.html",
+        sheet_url="https://docs.google.com/spreadsheets/d/1es8Oj4tlmGVTsbC7RcXhTZZ6h5vm-5F22X1I0BmItq4/edit?gid=1154456721#gid=1154456721",
+        pending_requests=pending_requests,
+        active_loans=active_loans,
+    )

@@ -9,6 +9,9 @@
             <p class="portal-eyebrow">{{ home_greeting }}</p>
             <h1 class="portal-hero-title">{{ home_display_name }}</h1>
             <p class="portal-hero-sub">{{ nav_level_label(nav_current_level) | title }} &middot; {{ home_today }}</p>
+            {% if tier == 6 %}
+            <a class="auth-submit-link portal-hero-signin" href="{{ url_for('auth.login') }}">Get Started</a>
+            {% endif %}
         </div>
         <span class="portal-hero-badge">RAIDsystem</span>
     </section>
@@ -145,8 +148,8 @@
 <div class="portal-guest">
     <span class="portal-guest-badge">RAIDsystem</span>
     <h1>Internal Organizational Portal</h1>
-    <p>Sign in with your organization account to access blog updates, the library, chat, attendance records and internal tools.</p>
-    <a class="auth-submit-link" href="{{ url_for('auth.login') }}">Sign in</a>
+    <p>Get started with your organization account to access blog updates, the library, chat, attendance records and internal tools.</p>
+    <a class="auth-submit-link" href="{{ url_for('auth.login') }}">Get Started</a>
 </div>
 {% endif %}
 {% endblock %}

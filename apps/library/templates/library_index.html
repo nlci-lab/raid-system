@@ -8,6 +8,9 @@
     <a class="ildb-table-tab{{ ' active' if tab == 'catalog' else '' }}" href="{{ url_for('library.index', tab='catalog') }}">Catalog</a>
     <a class="ildb-table-tab{{ ' active' if tab == 'requests' else '' }}" href="{{ url_for('library.index', tab='requests') }}">My Requests{% if tab_counts.pending %} <span class="genre-tab-count">{{ tab_counts.pending }}</span>{% endif %}</a>
     <a class="ildb-table-tab{{ ' active' if tab == 'loans' else '' }}" href="{{ url_for('library.index', tab='loans') }}">My Loans{% if tab_counts.issued %} <span class="genre-tab-count">{{ tab_counts.issued }}</span>{% endif %}</a>
+    {% if nav_current_level is defined and nav_current_level <= 1.0 %}
+    <a class="ildb-table-tab" href="{{ url_for('library.admin_panel') }}">Admin</a>
+    {% endif %}
 </div>
 
 {% if not has_library_user %}
@@ -16,30 +19,29 @@
 
 {% if tab == 'catalog' %}
 {% set genres = books | map(attribute='genre') | select | unique | sort | list %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-    <div class="genre-tabs" role="tablist" style="flex: 1;">
+<div class="catalog-toolbar">
+    <div class="genre-tabs" role="tablist">
         <button type="button" class="genre-tab active" data-genre="all">All <span class="genre-tab-count">{{ books | length }}</span></button>
         {% for genre in genres %}
         <button type="button" class="genre-tab" data-genre="{{ genre }}">{{ genre }} <span class="genre-tab-count">{{ books | selectattr('genre', 'equalto', genre) | list | length }}</span></button>
         {% endfor %}
     </div>
-    {% if nav_current_level is defined and nav_current_level <= 1.0 %}
-    <form method="post" action="{{ url_for('library.sync_from_sheet') }}" style="margin-left: 1rem;">
-        <button type="submit" title="Sync catalog from Google Sheets">Sync from Sheets</button>
-    </form>
-    {% endif %}
 </div>
 <div class="table-wrap table-wrap-bleed">
-    <table class="data-table" data-no-sort>
+    <table id="booksTable" class="data-table" data-no-sort>
         <thead>
         <tr>
             <th>SlNo</th>
             <th>No.</th>
             <th>Title</th>
-            <th>Author</th>
-            <th>Year</th>
             <th>Genre</th>
-            <th>Availability</th>
+            <th>Series</th>
+            <th>Year</th>
+            <th>Author</th>
+            <th>Volume</th>
+            <th>Call No.</th>
+            <th>L_id</th>
+            <th>TOC Link</th>
         </tr>
         </thead>
         <tbody>
@@ -55,7 +57,6 @@
             "Genre": book["genre"],
             "Series": book["series"],
             "Volume": book["volume"],
-            "Availability": book["availability"],
             "Call No.": book["library_id"],
             "L_id": book["l_id"],
             "TOC Link": book["link_to_toc"],
@@ -63,10 +64,14 @@
             <td>{{ loop.index }}</td>
             <td>{{ book['id'] }}</td>
             <td>{{ book['title'] }}</td>
-            <td>{{ book['author'] }}</td>
-            <td>{{ book['publish_year'] }}</td>
             <td>{{ book['genre'] }}</td>
-            <td>{{ book['availability'] }}</td>
+            <td>{{ book['series'] }}</td>
+            <td>{{ book['publish_year'] }}</td>
+            <td>{{ book['author'] }}</td>
+            <td>{{ book['volume'] }}</td>
+            <td>{{ book['library_id'] }}</td>
+            <td>{{ book['l_id'] }}</td>
+            <td>{% if book['link_to_toc'] %}<a href="{{ book['link_to_toc'] }}" target="_blank" rel="noopener">View TOC</a>{% endif %}</td>
         </tr>
         {% endfor %}
         </tbody>

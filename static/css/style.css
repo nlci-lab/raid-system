@@ -136,6 +136,7 @@ a.user-icon:hover {
     width: 320px;
     max-height: 420px;
     overflow-y: auto;
+    overflow-x: hidden;
     background: var(--surface);
     color: var(--text);
     border: 1px solid var(--border);
@@ -159,7 +160,13 @@ a.user-icon:hover {
     color: var(--muted);
 }
 
-.portal-search-item {
+/* .site-header a { color: #fff } targets every anchor inside the header —
+   including .portal-search-item, since the results dropdown is DOM-nested
+   inside .site-header even though it renders as a light-background overlay
+   below it. That rule's extra tag selector out-specifies plain
+   ".portal-search-item", making the text white-on-white and invisible.
+   The extra class here (two classes vs. one class + one tag) wins instead. */
+.portal-search-results .portal-search-item {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -175,8 +182,20 @@ a.user-icon:hover {
     background: var(--row-hover);
 }
 
+.portal-search-item-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .portal-search-item-sub {
     flex-shrink: 0;
+    max-width: 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 0.82em;
     color: var(--muted);
 }
@@ -320,6 +339,10 @@ a.user-icon:hover {
 .auth-form textarea:focus {
     outline: none;
     border-color: var(--accent);
+}
+
+.auth-form input::placeholder {
+    font-size: 0.85em;
 }
 
 .auth-form textarea {
@@ -960,6 +983,10 @@ body:has(main .full-width-page) main {
     text-decoration: none;
 }
 
+.portal-hero-signin {
+    margin-top: 14px;
+}
+
 @media (max-width: 700px) {
     .portal-hero {
         flex-direction: column;
@@ -1016,6 +1043,7 @@ table.data-table td:first-child {
 table.data-table thead th {
     position: sticky;
     top: 0;
+    z-index: 5;
     background: var(--surface);
     color: var(--muted);
     text-transform: uppercase;
@@ -1071,6 +1099,38 @@ table.data-table tbody tr:last-child td {
     border-radius: 0;
     border-left: none;
     border-right: none;
+    /* .table-wrap sets overflow-x: auto, which per spec forces the paired
+       overflow-y to compute as "auto" too (a "visible" axis can't coexist
+       with a non-visible one) — that silently turns this element into a
+       scroll container. It never actually grows an internal scrollbar
+       (nothing here constrains its height), so visually nothing changes,
+       but position:sticky inside it now anchors to *this* element instead
+       of the viewport, and since this box always moves in lockstep with
+       the page (it never scrolls relative to itself), "sticky" here is
+       equivalent to static — the whole thead + genre tabs + search bar
+       disappear on scroll instead of sticking. Since this wrapper is
+       already 100vw (full-bleed), it doesn't need its own horizontal
+       scrollbar the way narrower .table-wrap instances might; resetting
+       to overflow: visible removes the accidental scroll container and
+       makes the real viewport the sticky positioning ancestor again. */
+    overflow: visible;
+}
+
+/* The books table has two narrow leading numeric columns (SlNo, No.), not
+   just one — the generic first-child squeeze alone left the second column
+   at full width under table-layout:fixed, but the first column's own
+   width:1% left no room to honor its own padding, so its content and the
+   second column's content ended up rendered flush against each other
+   (e.g. "7" and "2" reading as "72"). "width:1%" under table-layout:fixed
+   is unreliable for this (columns can even render with a negative offset)
+   — explicit pixel widths, generous enough for padding + a couple of
+   digits, render correctly instead. */
+#booksTable th:first-child,
+#booksTable td:first-child,
+#booksTable th:nth-child(2),
+#booksTable td:nth-child(2) {
+    width: 56px;
+    white-space: nowrap;
 }
 
 /* The ildb table has no narrow leading column, so it shouldn't inherit the
@@ -2319,24 +2379,39 @@ body:has(main .chat-app) main {
     margin: 40px 0 0;
 }
 
+/* Real genre data runs wider than the tab strip was designed for (long
+   names like "Survey Reports", plus near-duplicate genres such as
+   "Anthropolgy"/"Anthropology" that both need their own tab) — flex-wrap
+   let the strip grow to two ragged lines that pushed the sync button
+   around. Kept to a single scrollable line instead: predictable height
+   (needed for the sticky stacking below) and no awkward wrap. */
 .genre-tabs {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: center;
     gap: 6px;
-    margin: 4px 0 16px;
+    margin: 0;
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
 }
 
 .genre-tab {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 7px 14px;
+    padding: 6px 12px;
     border: 1px solid var(--border);
     border-radius: 999px;
     background: var(--surface);
     color: var(--text);
     font-family: inherit;
-    font-size: 0.88em;
+    font-size: 0.85em;
+    white-space: nowrap;
+    flex-shrink: 0;
     cursor: pointer;
 }
 
@@ -2353,6 +2428,164 @@ body:has(main .chat-app) main {
 .genre-tab-count {
     font-size: 0.85em;
     color: var(--muted);
+}
+
+/* Library catalog toolbar (genre tabs + sync button) and the search box
+   that main.js inserts right after it both stay pinned near the top of the
+   viewport while scrolling the 591-row table, stacked one under the other.
+   top offsets are set inline by setupStickyToolbar() in main.js (measured
+   from actual rendered heights) rather than hardcoded here, since a fixed
+   guess would leave a gap or an overlap the moment padding/font-size ever
+   changes; the "top: 0" below is just the pre-JS/no-JS fallback for the
+   toolbar itself. Opaque backgrounds matter here — without them, table
+   rows scrolling underneath would show through. */
+.catalog-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin: 0 0 12px;
+    padding: 12px 0;
+    background: var(--bg);
+}
+
+.catalog-toolbar-sync {
+    flex-shrink: 0;
+    display: flex;
+    gap: 10px;
+}
+
+/* "Sync from Sheets" — the primary action here (pulls fresh data, rebuilds
+   the table), styled filled/accent like .auth-submit for consistency with
+   the rest of the app's primary-action buttons. */
+.catalog-toolbar-sync button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font: inherit;
+    font-size: 0.85em;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.catalog-toolbar-sync button:hover {
+    filter: brightness(1.08);
+}
+
+/* "Open Sheet" — a secondary action (just navigates out, doesn't change
+   anything), styled as an accent-outlined button so it reads as related to
+   but less prominent than the Sync button next to it. */
+.catalog-toolbar-sheet-link {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--accent);
+    font-size: 0.85em;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.catalog-toolbar-sheet-link:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+/* Library admin panel (/library/admin) */
+.admin-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.admin-panel-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.admin-panel-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.85em;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.admin-panel-btn-sm {
+    padding: 5px 12px;
+    font-size: 0.8em;
+}
+
+.admin-panel-btn-primary {
+    background: var(--accent);
+    color: #fff;
+}
+
+.admin-panel-btn-primary:hover {
+    filter: brightness(1.08);
+}
+
+.admin-panel-btn-outline {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+}
+
+.admin-panel-btn-outline:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.admin-panel-btn-danger {
+    background: transparent;
+    border: 1px solid #dc2626;
+    color: #dc2626;
+}
+
+.admin-panel-btn-danger:hover {
+    background: #dc2626;
+    color: #fff;
+}
+
+.admin-panel-row-actions {
+    display: flex;
+    gap: 6px;
+}
+
+/* The search <input> itself is only max-width:320px — sticky-positioning
+   it directly left the rest of that horizontal band (everything right of
+   x=320px, e.g. the Call No./L_id/TOC Link columns) with no opaque cover,
+   so tall tbody rows (ones that wrap to 2+ lines in a narrow column) still
+   showed through above the table header once scrolled. Wrapping the input
+   in a full-width bar (below) and making *that* the sticky/opaque element
+   fixes it — the input keeps its compact width, the bar behind it doesn't. */
+.catalog-search-bar {
+    position: sticky;
+    z-index: 29;
+    background: var(--bg);
+    padding-top: 6px;
+    padding-bottom: 14px;
+}
+
+.table-search.catalog-sticky-search {
+    margin: 0;
 }
 
 /* Internal database — table switcher within the active .db (real links,

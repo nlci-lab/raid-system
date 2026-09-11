@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Library Admin{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / <a href="{{ url_for('library.index') }}">Library</a> / Admin{% endblock %}
+{% block content %}
+<div class="admin-panel">
+
+<section class="portal-section">
+    <h2 class="portal-section-title">Catalog Source</h2>
+    <div class="admin-panel-actions">
+        <form method="post" action="{{ url_for('library.sync_from_sheet') }}">
+            <button type="submit" class="admin-panel-btn admin-panel-btn-primary" title="Sync catalog from Google Sheets">Sync from Sheets</button>
+        </form>
+        <a class="admin-panel-btn admin-panel-btn-outline" href="{{ sheet_url }}" target="_blank" rel="noopener" title="Open the source Google Sheet">Open Sheet</a>
+    </div>
+</section>
+
+<section class="portal-section">
+    <div class="portal-section-header">
+        <h2 class="portal-section-title">Pending Requests</h2>
+        <span class="genre-tab-count">{{ pending_requests | length }}</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table" data-no-sort>
+            <thead>
+            <tr>
+                <th>SlNo</th>
+                <th>Book</th>
+                <th>Author</th>
+                <th>Requested By</th>
+                <th>Requested At</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for req in pending_requests %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ req['title'] }}</td>
+                <td>{{ req['author'] }}</td>
+                <td>{{ req['requester_name'] }} <span class="portal-search-item-sub">{{ req['requester_email'] }}</span></td>
+                <td>{{ req['requested_at'] }}</td>
+                <td class="admin-panel-row-actions">
+                    <form method="post" action="{{ url_for('library.accept_request', loan_id=req['id']) }}">
+                        <button type="submit" class="admin-panel-btn admin-panel-btn-primary admin-panel-btn-sm">Accept</button>
+                    </form>
+                    <form method="post" action="{{ url_for('library.reject_request', loan_id=req['id']) }}">
+                        <button type="submit" class="admin-panel-btn admin-panel-btn-danger admin-panel-btn-sm">Reject</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6">No pending requests right now.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="portal-section">
+    <div class="portal-section-header">
+        <h2 class="portal-section-title">Active Loans</h2>
+        <span class="genre-tab-count">{{ active_loans | length }}</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table" data-no-sort>
+            <thead>
+            <tr>
+                <th>SlNo</th>
+                <th>Book</th>
+                <th>Author</th>
+                <th>Held By</th>
+                <th>Issued At</th>
+                <th>Issued By</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for loan in active_loans %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ loan['title'] }}</td>
+                <td>{{ loan['author'] }}</td>
+                <td>{{ loan['holder_name'] }} <span class="portal-search-item-sub">{{ loan['holder_email'] }}</span></td>
+                <td>{{ loan['taken_at'] }}</td>
+                <td>{{ loan['approved_by'] }}</td>
+                <td class="admin-panel-row-actions">
+                    <form method="post" action="{{ url_for('library.return_loan', loan_id=loan['id']) }}">
+                        <button type="submit" class="admin-panel-btn admin-panel-btn-outline admin-panel-btn-sm">Mark Returned</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7">No books currently on loan.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+</div>
+{% endblock %}

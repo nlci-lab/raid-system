@@ -14,6 +14,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from apps.audit import log_action
+from apps.levels import ANONYMOUS_LEVEL, current_level, tier
 from apps.config import (
     BREVO_API_KEY,
     BREVO_FROM_EMAIL,
@@ -220,7 +221,16 @@ def login_required(view):
 
 @auth.route("/login", methods=["GET", "POST"])
 def login():
-    if session.get("logged_in"):
+    # Bounce a real logged-in user back home — but not someone sitting at
+    # the anonymous tier (e.g. from the home page's "Sign in" button for
+    # anonymous-tier sessions), and not someone whose level can't be
+    # resolved at all (current_level() returning None — an edge case, but
+    # tier() crashes on None, so it must be checked before calling it).
+    # Without this exception, that button would send an anonymous-tier
+    # visitor to /login only to be redirected straight back home, looking
+    # like it does nothing (found 2026-09-11).
+    level = current_level()
+    if session.get("logged_in") and level is not None and tier(level) != ANONYMOUS_LEVEL:
         return redirect(url_for("hello"))
 
     if request.method == "POST":
@@ -284,8 +294,12 @@ def login():
 
         password = request.form.get("password", "").strip()
 
-        # If user doesn't exist or has no password_hash, send OTP to set one.
-        if user_row is None or not user_row[1]:
+        # Send an OTP to set/reset the password if: the user doesn't exist
+        # yet, they have no password_hash yet (first-time setup), OR they
+        # left the password field blank (even with an existing password —
+        # this makes blank-password on the main form double as "forgot
+        # password" for any account state, not just brand-new ones).
+        if user_row is None or not user_row[1] or not password:
             existing = _otp_store.get(email)
             if existing and time.time() - existing["sent_at"] < OTP_RESEND_COOLDOWN:
                 flash("A code was already sent. Please wait a moment before requesting another.", "error")
@@ -365,50 +379,6 @@ def verify():
         return redirect(url_for("auth.set_password"))
 
     return render_template("verify_otp.html", email=email)
-
-
-@auth.route("/login/forgot", methods=["GET", "POST"])
-def forgot():
-    if session.get("logged_in"):
-        return redirect(url_for("hello"))
-
-    if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-
-        if not _is_allowed_email(email):
-            # Generic message to not leak account existence.
-            flash("If that email is registered, a code has been sent.", "info")
-            return render_template("forgot_password.html")
-
-        existing = _otp_store.get(email)
-        if existing and time.time() - existing["sent_at"] < OTP_RESEND_COOLDOWN:
-            flash("If that email is registered, a code has been sent.", "info")
-            return render_template("forgot_password.html")
-
-        code = _generate_otp()
-        _otp_store[email] = {
-            "hash": _hash_otp(email, code),
-            "expires_at": time.time() + OTP_TTL_SECONDS,
-            "attempts": 0,
-            "sent_at": time.time(),
-        }
-
-        try:
-            _send_otp_email(email, code)
-        except Exception:
-            traceback.print_exc()
-            logging.getLogger(__name__).exception("Failed to send OTP email to %s", email)
-            _otp_store.pop(email, None)
-            # Still show generic message for security.
-            flash("If that email is registered, a code has been sent.", "info")
-            return render_template("forgot_password.html")
-
-        session["pending_email"] = email
-        session["otp_purpose"] = "reset"
-        flash("If that email is registered, a code has been sent.", "info")
-        return redirect(url_for("auth.verify"))
-
-    return render_template("forgot_password.html")
 
 
 @auth.route("/login/set-password", methods=["GET", "POST"])

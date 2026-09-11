@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupChatThread();
     setupDashboardNav();
     setupGenreTabs();
+    setupStickyToolbar();
     setupToasts();
     setupPortalSearch();
     setupWhatsNewSlideshow();
@@ -135,9 +136,9 @@ function setupPortalSearch() {
 
     function render(data) {
         const html = [
-            renderGroup("Blog", data.posts, (p) => `<a class="portal-search-item" href="/blog/${p.id}">${escapeHtml(p.title)}</a>`),
-            renderGroup("Library", data.books, (b) => `<a class="portal-search-item" href="/library#book-${b.id}">${escapeHtml(b.title)}<span class="portal-search-item-sub">${escapeHtml(b.author || "")}</span></a>`),
-            renderGroup("People", data.people, (p) => `<a class="portal-search-item" href="mailto:${escapeHtml(p.email)}">${escapeHtml(p.name || p.email)}<span class="portal-search-item-sub">${escapeHtml(p.email)}</span></a>`),
+            renderGroup("Blog", data.posts, (p) => `<a class="portal-search-item" href="/blog/${p.id}"><span class="portal-search-item-title">${escapeHtml(p.title)}</span></a>`),
+            renderGroup("Library", data.books, (b) => `<a class="portal-search-item" href="/library#book-${b.id}"><span class="portal-search-item-title">${escapeHtml(b.title)}</span><span class="portal-search-item-sub">${escapeHtml(b.author || "")}</span></a>`),
+            renderGroup("People", data.people, (p) => `<a class="portal-search-item" href="mailto:${escapeHtml(p.email)}"><span class="portal-search-item-title">${escapeHtml(p.name || p.email)}</span><span class="portal-search-item-sub">${escapeHtml(p.email)}</span></a>`),
         ].join("");
 
         if (!html) {
@@ -473,10 +474,72 @@ function setupTableSort(table) {
     });
 }
 
+/* Library catalog: keeps the genre-tabs/search toolbar pinned to the top
+   of the viewport while scrolling the (currently 591-row) table, and pins
+   the table's own header row directly beneath it. Offsets are measured at
+   runtime with getBoundingClientRect rather than hardcoded, since the
+   toolbar's real height depends on font rendering/browser zoom — a fixed
+   guess would leave a gap or overlap the header the moment that's off by
+   even a couple of pixels. Recomputed on resize (e.g. rotating a tablet)
+   since the search box and sync button can still reflow width even though
+   the genre-tab strip itself no longer wraps (see .genre-tabs overflow-x
+   in style.css). */
+function setupStickyToolbar() {
+    const toolbar = document.querySelector(".catalog-toolbar");
+    const wrap = document.querySelector(".table-wrap-bleed");
+    if (!toolbar || !wrap) return;
+
+    const table = wrap.querySelector("table.data-table");
+    const headRow = table && table.tHead && table.tHead.rows[0];
+    if (!headRow) return;
+
+    // setupTableSearch() inserts the search input as wrap's previous
+    // sibling (after the toolbar), once per table — grab it if present.
+    // It's only max-width:320px itself, so sticky-positioning the input
+    // directly would leave everything to its right in that band
+    // unoccluded (tall wrapped rows would show through above the table
+    // header) — wrap it in a full-width bar and stick that instead.
+    const search = wrap.previousElementSibling;
+    const hasSearch = search && search !== toolbar && search.classList.contains("table-search");
+    let searchBar = null;
+    if (hasSearch) {
+        searchBar = document.createElement("div");
+        searchBar.className = "catalog-search-bar";
+        search.classList.add("catalog-sticky-search");
+        search.parentElement.insertBefore(searchBar, search);
+        searchBar.appendChild(search);
+    }
+
+    const applyOffsets = () => {
+        let stackHeight = toolbar.getBoundingClientRect().height;
+        if (searchBar) {
+            searchBar.style.top = `${stackHeight}px`;
+            stackHeight += searchBar.getBoundingClientRect().height;
+        }
+        Array.from(headRow.cells).forEach((th) => {
+            th.style.top = `${stackHeight}px`;
+        });
+    };
+
+    applyOffsets();
+    window.addEventListener("resize", applyOffsets);
+}
+
 function setupGenreTabs() {
     document.querySelectorAll(".genre-tabs").forEach((tabs) => {
-        const table = (tabs.nextElementSibling && tabs.nextElementSibling.querySelector("table.data-table"))
-            || tabs.parentElement.querySelector("table.data-table");
+        // The table isn't always a direct sibling of .genre-tabs itself, or
+        // inside its immediate parent — on the library catalog page,
+        // .genre-tabs sits inside a flex header row, and the table lives in
+        // a *sibling* of that row (.table-wrap), not inside it. Walk
+        // forward through .genre-tabs' own siblings, then its parent's
+        // siblings, until a table.data-table turns up — works whether the
+        // table is a near sibling of the tabs or one level further out.
+        let table = null;
+        for (let node = tabs; node && !table; node = node.parentElement) {
+            for (let sib = node.nextElementSibling; sib && !table; sib = sib.nextElementSibling) {
+                table = sib.matches("table.data-table") ? sib : sib.querySelector("table.data-table");
+            }
+        }
         if (!table) return;
 
         const buttons = tabs.querySelectorAll(".genre-tab");

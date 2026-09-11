@@ -1,10 +1,13 @@
 from pathlib import Path
 
-DB_DIR = Path(__file__).parent.parent / "db"
+# modules/db.py -> modules/ -> raid-system/ (app root) -> raid_system/ (container,
+# sibling of the app folder) / "db". Computed relative to this file so it keeps
+# working if the app folder itself gets renamed/moved again, as long as db/
+# stays a sibling of whatever the app folder is called.
+DB_DIR = Path(__file__).parent.parent.parent / "db"
 
 USERS_DB = DB_DIR / "users.db"
-BOOKS_DB = DB_DIR / "books.db"
-LOANS_DB = DB_DIR / "loans.db"
+LIBRARY_DB = DB_DIR / "library.db"  # holds both the "books" catalog table and the "loans" log table
 ATTENDANCE_DB = DB_DIR / "attendance.db"
 CHAT_DB = DB_DIR / "chat.db"
 BLOG_DB = DB_DIR / "blog.db"

@@ -92,6 +92,11 @@
                 <span class="tile-title">Blog</span>
                 <span class="tile-desc">Posts, updates &amp; announcements</span>
             </a>
+            <div class="tile tile-report-archive tile-disabled" aria-disabled="true">
+                <span class="tile-icon">🗂️</span>
+                <span class="tile-title">Survey Report Archive</span>
+                <span class="tile-desc">Search RAID's survey reports by language, state, or library code. Coming soon.</span>
+            </div>
             {% if tier <= 4 %}
             <a class="tile tile-library" href="/library">
                 <span class="tile-icon">📚</span>
@@ -126,6 +131,11 @@
                 <span class="tile-icon">🗄️</span>
                 <span class="tile-title">Internal Database</span>
                 <span class="tile-desc">Admin only</span>
+            </a>
+            <a class="tile tile-guide" href="{{ url_for('guide.view') }}">
+                <span class="tile-icon">📖</span>
+                <span class="tile-title">Guide</span>
+                <span class="tile-desc">Guide to RAID system</span>
             </a>
             {% endif %}
         </div>

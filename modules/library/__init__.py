@@ -5,15 +5,21 @@ from functools import wraps
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
 from modules.audit import log_action
-from modules.db import BOOKS_DB, LOANS_DB, USERS_DB
+from modules.db import LIBRARY_DB, USERS_DB
 from modules.levels import MANAGER_LEVEL, VIEWER_LEVEL, current_level, tier
 from modules.library.sync_from_sheet import DEFAULT_CSV_URL, sync_books_from_sheet
 
 library = Blueprint("library", __name__, template_folder="templates")
 
-# New unified loans schema — no more separate requests/loans tables.
+# Unified loans schema — books and loans both live in library.db now (one
+# file, two tables), so no cross-db attach/prefix is needed between them
+# *when library.db is the connection's main database* (this module's own
+# get_conn()). dashboard.get_conn() attaches library.db under the alias
+# "library" instead (main there is users.db) -- unqualified CREATE
+# TABLE/ALTER TABLE/PRAGMA always target "main" regardless of attach order,
+# so _ensure_loans_table takes a schema prefix to stay correct either way.
 LOANS_SCHEMA = """
-    CREATE TABLE IF NOT EXISTS loans.loans (
+    CREATE TABLE IF NOT EXISTS {prefix}loans (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         book_id INTEGER NOT NULL REFERENCES books(id),
         status TEXT NOT NULL,
@@ -29,30 +35,33 @@ LOANS_SCHEMA = """
 """
 
 
-def _ensure_loans_table(conn):
-    """Ensure loans.loans exists with the new unified schema.
+def _ensure_loans_table(conn, prefix=""):
+    """Ensure loans exists with the current unified schema.
 
-    The pre-existing "loans" table (from build_db.py's old id/book_id/user_id/
-    status shape) has the same name but different columns, so a plain
-    "CREATE TABLE IF NOT EXISTS" would silently no-op against it and every
-    new query (which references requested_by/approved_by/etc.) would fail
-    with "no such column". Detect that case and rename the old table out of
-    the way instead of dropping it, so historical rows aren't destroyed.
+    prefix is "" when library.db is the connection's main database (this
+    module's own get_conn()), or "library." when it's attached under that
+    alias instead (dashboard.get_conn()) -- unqualified DDL always targets
+    "main", so the prefix must be explicit to land in the right database.
+
+    A pre-existing "loans" table from an older shape (different columns)
+    would make a plain "CREATE TABLE IF NOT EXISTS" silently no-op, and
+    every query here (which references requested_by/approved_by/etc.) would
+    fail with "no such column". Detect that case and rename the old table
+    out of the way instead of dropping it, so historical rows aren't
+    destroyed.
     """
-    cols = {row[1] for row in conn.execute("PRAGMA loans.table_info(loans)")}
+    cols = {row[1] for row in conn.execute(f"PRAGMA {prefix}table_info(loans)")}
     if cols and "requested_by" not in cols:
-        conn.execute("ALTER TABLE loans.loans RENAME TO loans_legacy")
-    conn.executescript(LOANS_SCHEMA)
+        conn.execute(f"ALTER TABLE {prefix}loans RENAME TO loans_legacy")
+    conn.executescript(LOANS_SCHEMA.format(prefix=prefix))
     conn.commit()
 
 
 def get_conn():
-    """Connect to books.db (which has books table) and attach loans.db
-    (which has loans table) and users.db (for user lookups).
-    Both databases are attached to enable joins across them."""
-    conn = sqlite3.connect(BOOKS_DB)
+    """Connect to library.db (books + loans tables) and attach users.db for
+    user lookups."""
+    conn = sqlite3.connect(LIBRARY_DB)
     conn.row_factory = sqlite3.Row
-    conn.execute("ATTACH DATABASE ? AS loans", (str(LOANS_DB),))
     conn.execute("ATTACH DATABASE ? AS users", (str(USERS_DB),))
     _ensure_loans_table(conn)
     return conn
@@ -101,10 +110,60 @@ def _pending_request_book_ids(conn, user):
     if not user:
         return set()
     rows = conn.execute(
-        "SELECT DISTINCT book_id FROM loans.loans WHERE requested_by = ? AND status = 'pending'",
+        "SELECT DISTINCT book_id FROM loans WHERE requested_by = ? AND status = 'pending'",
         (user["id"],),
     ).fetchall()
     return {row["book_id"] for row in rows}
+
+
+def _my_requests(conn, user):
+    """This user's requests that haven't turned into a loan yet — pending
+    (awaiting review) and rejected (so they can see the outcome), most
+    recent first. Once accepted, a request becomes an 'issued' loan and
+    moves to _my_loans instead."""
+    if not user:
+        return []
+    return conn.execute(
+        """SELECT loans.id, loans.status, loans.requested_at, loans.approved_by, loans.approved_at,
+                  books.title, books.author
+           FROM loans JOIN books ON books.id = loans.book_id
+           WHERE loans.requested_by = ? AND loans.status IN ('pending', 'rejected')
+           ORDER BY loans.requested_at DESC, loans.id DESC""",
+        (user["id"],),
+    ).fetchall()
+
+
+def _my_loans(conn, user):
+    """This user's issued (currently held) and returned (history) loans,
+    active loans first."""
+    if not user:
+        return []
+    return conn.execute(
+        """SELECT loans.id, loans.status, loans.taken_at, loans.expected_return_at,
+                  loans.returned_at, loans.returned_to, books.title, books.author
+           FROM loans JOIN books ON books.id = loans.book_id
+           WHERE loans.requested_by = ? AND loans.status IN ('issued', 'returned')
+           ORDER BY (loans.status = 'issued') DESC, loans.taken_at DESC, loans.id DESC""",
+        (user["id"],),
+    ).fetchall()
+
+
+def _my_tab_counts(conn, user):
+    """Cheap counts for the My Requests / My Loans tab badges — pending
+    requests awaiting a decision, and loans currently issued (not
+    returned). Computed regardless of which tab is active so the badges
+    stay accurate no matter where the user lands."""
+    if not user:
+        return {"pending": 0, "issued": 0}
+    pending = conn.execute(
+        "SELECT COUNT(*) FROM loans WHERE requested_by = ? AND status = 'pending'",
+        (user["id"],),
+    ).fetchone()[0]
+    issued = conn.execute(
+        "SELECT COUNT(*) FROM loans WHERE requested_by = ? AND status = 'issued'",
+        (user["id"],),
+    ).fetchone()[0]
+    return {"pending": pending, "issued": issued}
 
 
 def _book_availability(conn, book_id):
@@ -112,7 +171,7 @@ def _book_availability(conn, book_id):
     Returns 'Taken' if an open issued loan exists (status='issued', returned_at IS NULL),
     otherwise 'At Stock'."""
     row = conn.execute(
-        "SELECT 1 FROM loans.loans WHERE book_id = ? AND status = 'issued' AND returned_at IS NULL",
+        "SELECT 1 FROM loans WHERE book_id = ? AND status = 'issued' AND returned_at IS NULL",
         (book_id,),
     ).fetchone()
     return "Taken" if row else "At Stock"
@@ -122,45 +181,56 @@ def _book_availability(conn, book_id):
 @viewer_required
 def index():
     conn = get_conn()
-    # Display order = catalog "Sorting parameter" from the source spreadsheet:
-    # 1. Genre  2. Series  3. Publish year (ascending)  4. Book title.
-    # This is a query-time sort only — it has no relation to a book's physical
-    # shelf position (shelf_name/case_number/case_id), which is assigned once
-    # per book in arrival order and never renumbered. Keeping the two decoupled
-    # means adding a book never reshuffles another book's shelf label; it just
-    # changes where the new row lands in this ORDER BY.
+    user = _current_user(conn)
 
-    # Check if new schema columns exist; fall back to old schema if needed
-    try:
-        # Try new schema first (after sync)
+    tab = request.args.get("tab", "catalog")
+    if tab not in ("catalog", "requests", "loans"):
+        tab = "catalog"
+
+    books_with_availability = []
+    requested_ids = set()
+    my_requests = []
+    my_loans = []
+
+    if tab == "catalog":
+        # Display order = catalog "Sorting parameter" from the source spreadsheet:
+        # 1. Genre  2. Series  3. Publish year (ascending)  4. Book title.
+        # ok/scanned/shelf_name/case_number/case_id no longer exist (dropped along
+        # with the sheet's underscore-prefixed columns) -- no physical shelf
+        # location is tracked or displayed any more.
         rows = conn.execute("""
             SELECT * FROM books
             ORDER BY genre, series, publish_year, title
         """).fetchall()
-    except Exception:
-        # Fall back to old schema (before first sync)
-        rows = conn.execute("""
-            SELECT * FROM books
-            ORDER BY genre, series, pub_year, title
-        """).fetchall()
 
-    # Compute availability for each book; convert Row to dict with safe defaults
-    books_with_availability = []
-    for book in rows:
-        book_dict = dict(book)
-        # Support both old schema (pub_year) and new schema (publish_year)
-        if "publish_year" not in book_dict and "pub_year" in book_dict:
-            book_dict["publish_year"] = book_dict["pub_year"]
-        # Ensure all expected fields exist (some may be NULL if schema is old)
-        for field in ["ok", "scanned", "library_id", "l_id", "shelf_name", "case_number", "case_id", "link_to_toc", "publish_year"]:
-            if field not in book_dict:
-                book_dict[field] = None
-        book_dict["availability"] = _book_availability(conn, book["id"])
-        books_with_availability.append(book_dict)
+        # Compute availability for each book; convert Row to dict with safe defaults
+        for book in rows:
+            book_dict = dict(book)
+            # Ensure all expected fields exist (some may be NULL)
+            for field in ["library_id", "l_id", "link_to_toc", "publish_year"]:
+                if field not in book_dict:
+                    book_dict[field] = None
+            book_dict["availability"] = _book_availability(conn, book["id"])
+            books_with_availability.append(book_dict)
 
-    requested_ids = _pending_request_book_ids(conn, _current_user(conn))
+        requested_ids = _pending_request_book_ids(conn, user)
+    elif tab == "requests":
+        my_requests = _my_requests(conn, user)
+    elif tab == "loans":
+        my_loans = _my_loans(conn, user)
+
+    tab_counts = _my_tab_counts(conn, user)
     conn.close()
-    return render_template("library_index.html", books=books_with_availability, requested_ids=requested_ids)
+    return render_template(
+        "library_index.html",
+        tab=tab,
+        has_library_user=user is not None,
+        books=books_with_availability,
+        requested_ids=requested_ids,
+        my_requests=my_requests,
+        my_loans=my_loans,
+        tab_counts=tab_counts,
+    )
 
 
 @library.route("/library/books/<int:book_id>/request", methods=["POST"])
@@ -180,7 +250,7 @@ def request_book(book_id):
 
     # Check for existing pending request
     existing = conn.execute(
-        "SELECT 1 FROM loans.loans WHERE book_id = ? AND requested_by = ? AND status = 'pending'",
+        "SELECT 1 FROM loans WHERE book_id = ? AND requested_by = ? AND status = 'pending'",
         (book_id, user["id"]),
     ).fetchone()
     if existing:
@@ -189,7 +259,7 @@ def request_book(book_id):
         return redirect(request.referrer or url_for("library.index"))
 
     conn.execute(
-        """INSERT INTO loans.loans
+        """INSERT INTO loans
            (book_id, status, requested_by, requested_at)
            VALUES (?, 'pending', ?, ?)""",
         (book_id, user["id"], now()),
@@ -204,7 +274,7 @@ def request_book(book_id):
 @admin_required
 def accept_request(loan_id):
     conn = get_conn()
-    loan = conn.execute("SELECT * FROM loans.loans WHERE id = ?", (loan_id,)).fetchone()
+    loan = conn.execute("SELECT * FROM loans WHERE id = ?", (loan_id,)).fetchone()
     if not loan or loan["status"] != "pending":
         conn.close()
         flash("That request is no longer pending.", "error")
@@ -213,7 +283,7 @@ def accept_request(loan_id):
     admin_email = session.get("user_email", "")
     decided_at = now()
     conn.execute(
-        """UPDATE loans.loans
+        """UPDATE loans
            SET status = 'issued', approved_by = ?, approved_at = ?, taken_at = ?
            WHERE id = ?""",
         (admin_email, decided_at, decided_at, loan_id),
@@ -229,14 +299,14 @@ def accept_request(loan_id):
 @admin_required
 def reject_request(loan_id):
     conn = get_conn()
-    loan = conn.execute("SELECT status FROM loans.loans WHERE id = ?", (loan_id,)).fetchone()
+    loan = conn.execute("SELECT status FROM loans WHERE id = ?", (loan_id,)).fetchone()
     if not loan or loan["status"] != "pending":
         conn.close()
         flash("That request is no longer pending.", "error")
         return redirect(request.referrer or url_for("dashboard.index"))
 
     conn.execute(
-        """UPDATE loans.loans
+        """UPDATE loans
            SET status = 'rejected', approved_by = ?, approved_at = ?
            WHERE id = ?""",
         (session.get("user_email", ""), now(), loan_id),
@@ -252,14 +322,14 @@ def reject_request(loan_id):
 @admin_required
 def return_loan(loan_id):
     conn = get_conn()
-    loan = conn.execute("SELECT * FROM loans.loans WHERE id = ?", (loan_id,)).fetchone()
+    loan = conn.execute("SELECT * FROM loans WHERE id = ?", (loan_id,)).fetchone()
     if not loan or loan["status"] != "issued":
         conn.close()
         flash("That loan is not currently active.", "error")
         return redirect(request.referrer or url_for("dashboard.index"))
 
     conn.execute(
-        """UPDATE loans.loans
+        """UPDATE loans
            SET status = 'returned', returned_at = ?, returned_to = ?
            WHERE id = ?""",
         (now(), session.get("user_email", ""), loan_id),

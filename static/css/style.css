@@ -902,6 +902,19 @@ body:has(main .full-width-page) main {
 .tile-internal-db { --tile-bg: #f9f1f1; --tile-accent: #9f1239; }
 .tile-ai-chat { --tile-bg: #f1f5f9; --tile-accent: #4338ca; }
 .tile-guide { --tile-bg: #f5f3ff; --tile-accent: #5b21b6; }
+.tile-report-archive { --tile-bg: #f4f6f1; --tile-accent: #3f6212; }
+
+/* Placeholder tiles for not-yet-built features: visually inert, no hover/click affordance. */
+.tile-disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.tile-disabled:hover {
+    transform: none;
+    border-color: var(--border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
 
 /* Guest (logged-out) home view: branded sign-in prompt, no quick-access grid. */
 .portal-guest {

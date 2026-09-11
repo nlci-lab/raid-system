@@ -14,6 +14,7 @@ from modules.chat import chat
 from modules.config import SECRET_KEY
 from modules.dashboard import dashboard
 from modules.db import USERS_DB
+from modules.guide import guide
 from modules.ildb import ildb
 from modules.levels import ANONYMOUS_LEVEL, SUB_LEVEL_LABELS, VIEWER_LEVEL, current_level, level_label, real_level, tier
 from modules.library import get_conn as _library_get_conn, library
@@ -37,6 +38,7 @@ app.register_blueprint(attendance)
 app.register_blueprint(blog)
 app.register_blueprint(ildb)
 app.register_blueprint(access)
+app.register_blueprint(guide)
 
 
 @app.errorhandler(403)
@@ -133,11 +135,11 @@ def hello():
         loans_conn = _library_get_conn()
         home_loans = loans_conn.execute(
             """
-            SELECT books.title AS title, loans.loans.taken_at AS issued_at
-            FROM loans.loans
-            JOIN books ON books.id = loans.loans.book_id
-            WHERE loans.loans.requested_by = ? AND loans.loans.status = 'issued'
-            ORDER BY loans.loans.taken_at DESC
+            SELECT books.title AS title, loans.taken_at AS issued_at
+            FROM loans
+            JOIN books ON books.id = loans.book_id
+            WHERE loans.requested_by = ? AND loans.status = 'issued'
+            ORDER BY loans.taken_at DESC
             """,
             (row["id"],),
         ).fetchall()
@@ -212,4 +214,4 @@ def search():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5055, debug=True)

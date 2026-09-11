@@ -12,7 +12,14 @@ import sqlite3
 import sys
 from pathlib import Path
 
-DEFAULT_DB = Path(__file__).parent.parent / "db" / "users.db"
+# Run as a plain script (`python modules/migrate_to_levels.py`), so the
+# `modules` package's own parent (core/) isn't on sys.path automatically —
+# add it before importing modules.config as a package, same fix `app.py`
+# doesn't need only because Flask is normally launched from core/ itself.
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from modules.config import DEV_EMAILS  # noqa: E402
+
+DEFAULT_DB = Path(__file__).parent.parent.parent / "db" / "users.db"
 
 ROLE_TO_LEVEL = {
     "admin": 1.0,
@@ -21,7 +28,9 @@ ROLE_TO_LEVEL = {
 NLIFE_USER_LEVEL = 4.0
 DEFAULT_LEVEL = 5.0  # non-nlife.in `user` rows keep this (schema default too)
 
-DEV_EMAILS = {"martin_mathew@nlife.in"}
+# DEV_EMAILS now comes from modules/config.py, which reads it from the
+# untracked pass_raid_system.txt secrets file (optional "dev_emails" list) —
+# no real staff email is hardcoded in this script anymore.
 
 
 def migrate(db_path):

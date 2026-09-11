@@ -5,7 +5,7 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, s
 
 from modules.access import SCHEMA as ACCESS_REQUESTS_SCHEMA
 from modules.audit import log_action, recent_entries
-from modules.db import BOOKS_DB, LOANS_DB, USERS_DB
+from modules.db import LIBRARY_DB, USERS_DB
 from modules.library import _ensure_loans_table
 from modules.levels import (
     ADMIN_LEVEL,
@@ -21,19 +21,19 @@ from modules.levels import (
 dashboard = Blueprint("dashboard", __name__, template_folder="templates")
 
 def get_conn():
-    """Connect to users.db and attach books.db / loans.db so loans can be joined.
+    """Connect to users.db and attach library.db (books + loans tables) so
+    they can be joined against users.
 
-    loans.loans is the unified request+loan table owned by modules/library
-    (see modules/library/__init__.py's LOANS_SCHEMA / _ensure_loans_table).
-    This module only reads it — it no longer creates its own separate
-    requests table or migrates loan columns; that's the library module's job.
+    loans is the unified request+loan table owned by modules/library (see
+    modules/library/__init__.py's LOANS_SCHEMA / _ensure_loans_table). This
+    module only reads it — it no longer creates its own separate requests
+    table or migrates loan columns; that's the library module's job.
     """
     conn = sqlite3.connect(USERS_DB)
     conn.row_factory = sqlite3.Row
-    conn.execute("ATTACH DATABASE ? AS books", (str(BOOKS_DB),))
-    conn.execute("ATTACH DATABASE ? AS loans", (str(LOANS_DB),))
+    conn.execute("ATTACH DATABASE ? AS library", (str(LIBRARY_DB),))
     conn.executescript(ACCESS_REQUESTS_SCHEMA)
-    _ensure_loans_table(conn)  # idempotent — safe whichever route hits it first
+    _ensure_loans_table(conn, prefix="library.")  # idempotent — safe whichever route hits it first
     return conn
 
 
@@ -82,29 +82,29 @@ def _dashboard_context():
     conn = get_conn()
     is_admin = tier(current_level()) <= ADMIN_LEVEL
     users = conn.execute("SELECT * FROM users ORDER BY name").fetchall()
-    # loans.loans is now the single unified table for the whole request/loan
+    # library.loans is now the single unified table for the whole request/loan
     # lifecycle (see modules/library). "loans" here = actually issued history
     # (issued or returned); "requests" = still awaiting an admin decision.
     # Old columns are aliased back to their old names so the templates,
     # which were never touched, keep working unmodified.
     loans = conn.execute("""
-        SELECT loans.loans.id, books.books.title, users.name AS user_name, loans.loans.status,
-               loans.loans.requested_at, loans.loans.approved_by AS issued_by, loans.loans.taken_at AS issued_at,
-               loans.loans.returned_at, loans.loans.returned_to AS returned_by
-        FROM loans.loans
-        JOIN books.books ON books.books.id = loans.loans.book_id
-        JOIN users ON users.id = loans.loans.requested_by
-        WHERE loans.loans.status IN ('issued', 'returned')
-        ORDER BY loans.loans.id
+        SELECT library.loans.id, library.books.title, users.name AS user_name, library.loans.status,
+               library.loans.requested_at, library.loans.approved_by AS issued_by, library.loans.taken_at AS issued_at,
+               library.loans.returned_at, library.loans.returned_to AS returned_by
+        FROM library.loans
+        JOIN library.books ON library.books.id = library.loans.book_id
+        JOIN users ON users.id = library.loans.requested_by
+        WHERE library.loans.status IN ('issued', 'returned')
+        ORDER BY library.loans.id
     """).fetchall()
     requests = conn.execute("""
-        SELECT loans.loans.id, loans.loans.status, loans.loans.requested_at,
-               books.books.title AS book_title, users.name AS user_name
-        FROM loans.loans
-        JOIN books.books ON books.books.id = loans.loans.book_id
-        JOIN users ON users.id = loans.loans.requested_by
-        WHERE loans.loans.status = 'pending'
-        ORDER BY loans.loans.requested_at DESC, loans.loans.id DESC
+        SELECT library.loans.id, library.loans.status, library.loans.requested_at,
+               library.books.title AS book_title, users.name AS user_name
+        FROM library.loans
+        JOIN library.books ON library.books.id = library.loans.book_id
+        JOIN users ON users.id = library.loans.requested_by
+        WHERE library.loans.status = 'pending'
+        ORDER BY library.loans.requested_at DESC, library.loans.id DESC
     """).fetchall()
     access_requests = conn.execute(
         "SELECT * FROM access_requests ORDER BY requested_at DESC, id DESC"

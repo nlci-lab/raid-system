@@ -1,46 +1,125 @@
-# RAID System
+# raid-system
 
-Public demo mirror of the internal Flask web application built for NLCI's RAID department (Research and Information Department). It brings several day-to-day departmental workflows — a library catalog, an internal language database, team chat, a blog, book loans, attendance tracking, and access-request handling — into a single portal with role-based permissions. The `db/` folder ships with synthetic, non-real data (placeholder names like `user1`, `lang1`, `book1`) so the app runs out of the box without exposing any real member or organizational records.
+An internal staff portal for the Research and Information Department (RAID) of
+NLCI (New Life Computer Institute) — a department that documents
+under-resourced languages through field survey work and produces the reports
+that inform Bible translation priorities.
 
-## Features
+This app is the department's day-to-day internal tool: staff login,
+attendance, an internal blog, a book-lending library, team chat, an
+access-request/admin layer, and a read-only viewer over the department's
+internal SQLite databases. It is not a public-facing site.
 
-- **Auth** — email-based one-time-code login open to any valid email address; an `@nlife.in` address gets the `viewer` tier by default, anything else gets `external`, with a dev bypass switch for local testing.
-- **Dashboard** — a role-aware landing page; dedicated dashboard views exist for a few specific sub-roles (e.g. director, senior manager) while everyone else shares the default one.
-- **Library** — book catalog with checkouts/returns (loans), synced from an external sheet/CSV import.
-- **Internal Language Database (ildb)** — a read-only table viewer over the app's own SQLite databases, admin-only, originally built around a language/dialect reference dataset.
-- **Chat** — internal team messaging with file attachments.
-- **Blog** — internal posts/announcements with image support.
-- **Attendance** — daily attendance marking and history.
-- **Access requests** — lets a user who hits a permission wall ask an admin to grant access to that section.
-- **AI chat** — an assistant panel backed by a local LLM endpoint.
-- **Audit log** — tracks key actions (level changes, approvals, etc.) for admin review.
+Current version: **5.1.0** (see [`VERSION`](VERSION); shown in the footer of
+every page).
 
-### Access levels
+## What's in this repository
 
-Permissions are governed by a numeric level on each user (lower = more privileged), with optional decimal sub-levels for organizational sub-titles that share their whole-number tier's permissions:
+This repository holds the application codebase only — `app.py`, `modules/`,
+`templates/`, and `static/`. It is one part of a larger local project layout;
+the pieces that are **not** in this repository (and must not be committed to
+it) are:
 
-| Level | Role |
+- the actual SQLite databases (staff records, attendance, chat, blog, library
+  loans, and the internal language database)
+- an internal architecture/deployment guide
+- runtime logs
+- a plaintext secrets/config file (SMTP or API credentials, session secret
+  key, etc.)
+- `tools/` — standalone utility scripts (e.g. `brevo_status.py`) that live as
+  a sibling directory, not part of this app's own codebase
+
+Those live as sibling directories/files alongside this one in the full
+project layout, kept out of version control, and are supplied locally (or on
+the server) at the paths described below.
+
+## Modules at a glance
+
+| Module | Purpose |
 |---|---|
-| 0 | dev |
-| 1 | admin |
-| 2 | data_manager |
-| 3 | raid_staff |
-| 4 | viewer |
-| 5 | external |
-| 6 | anonymous |
+| `modules/auth` | Email + password login, with an OTP-based flow for first-time password setup and "forgot password" |
+| `modules/dashboard` | Home/admin dashboard, user management |
+| `modules/attendance` | Staff attendance tracking |
+| `modules/blog` | Internal team blog (posts stored as files, indexed in a small DB) |
+| `modules/chat` | Team chat with file attachments |
+| `modules/ai_chat` | Optional AI chat assistant backed by a local [Ollama](https://ollama.com) instance (`http://localhost:11434`) — inert if Ollama isn't running |
+| `modules/library` | Book catalog and lending/loan tracking, synced from a published Google Sheet |
+| `modules/access` | Lets a user request access to a section they were denied, and lets an admin approve/deny it |
+| `modules/ildb` | Admin-only, read-only table browser over any `.db` file in the database directory |
+| `modules/guide` | Admin-only viewer for an internal markdown guide (optional — see below) |
+| `modules/levels`, `modules/audit`, `modules/db`, `modules/config` | Shared infrastructure: numeric access-level system, audit logging, database path resolution, secrets loading |
 
-## Setup
+**Access control**: a single numeric `users.level` field (lower = more
+privileged) gates every route — dev, admin, data manager, staff, viewer,
+external, anonymous — with optional decimal sub-levels for organizational
+roles that share a tier's permissions.
+
+## Running locally
+
+### Requirements
+
+- Python 3.x
+- [Flask](https://flask.palletsprojects.com/) (`pip install flask`) — the
+  only runtime dependency of the app itself. `werkzeug` comes with it.
+- (Optional) [`requests`](https://pypi.org/project/requests/) — only needed
+  if you use the standalone `tools/brevo_status.py` CLI script (lives outside
+  this repo, as a sibling `tools/` directory alongside `core/`).
+- (Optional) A local [Ollama](https://ollama.com) instance if you want the
+  `ai_chat` module to actually respond.
+
+There is currently no `requirements.txt` in this repo — the dependency list
+above is everything actually imported by the code.
+
+### Directory layout this code expects
+
+`modules/db.py` and `modules/config.py` resolve two things relative to
+*this* app folder, not from anywhere inside it:
+
+- **Databases** — `modules/db.py` looks for a `db/` folder that is a
+  **sibling of this app folder** (i.e. `../db/` relative to `app.py`),
+  containing `users.db`, `library.db`, `attendance.db`, `chat.db`,
+  `blog.db`, and `ildb.db`. The app will not start correctly without at
+  least `users.db` present there.
+- **Secrets** — `modules/config.py` loads a `pass_raid_system.txt` file,
+  parsed as JSON, with at minimum:
+
+  ```json
+  {
+    "email_id": "...",
+    "passcode": "...",
+    "secret_key": "..."
+  }
+  ```
+
+  Optional keys: `resend_api_key`, `resend_from_email`, `dev_bypass_code`
+  (a standing login-field bypass for local dev/automated testing only — see
+  the docstring in `modules/config.py`). **Verify the exact path
+  `modules/config.py` reads before relying on this** — depending on which
+  snapshot of this layout you're working from, that file may need to sit
+  directly inside the app folder or one level up as a sibling of it; check
+  `CONFIG_PATH` in `modules/config.py` against where the file actually is
+  before you assume it will be picked up.
+
+- **Guide viewer (optional)** — `modules/guide` will look for a `guide/`
+  folder as a sibling of this app folder. If it isn't present, the guide
+  page simply has nothing to show (it's admin-only and non-essential to the
+  rest of the app).
+
+None of `db/`, `guide/`, `logs/`, or the secrets file are part of this
+repository — set them up locally (or point at existing ones) before running
+the app.
+
+### Run it
 
 ```bash
-python -m venv venv
-venv/bin/pip install -r requirements.txt   # venv\Scripts\pip on Windows
-cp pass_raid_system.txt.example pass_raid_system.txt
-# edit pass_raid_system.txt with your own SMTP account and secret key
 python app.py
 ```
 
-Login normally goes through a one-time email code (SMTP credentials required in `pass_raid_system.txt`). For local testing without email delivery, set a `dev_bypass_code` in `pass_raid_system.txt` and type that value into the login form's email field instead of a real address — it logs straight in with no OTP round trip.
+Runs a Flask dev server on `0.0.0.0:5055` with debug mode on. Production
+deployment (gunicorn + nginx, systemd) is handled outside this repository.
 
-## Tech stack
+## License / audience
 
-Flask (Python) backend, server-rendered Jinja templates, SQLite for storage — one database file per module (users, books/loans, chat, blog, attendance, ildb).
+Internal tool for NLCI's RAID department. Shared here as source-of-truth
+code for deployment purposes; no warranty of fitness for use outside that
+context.

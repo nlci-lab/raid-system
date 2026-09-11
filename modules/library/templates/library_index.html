@@ -3,6 +3,18 @@
 {% block breadcrumb %}<a href="/">Home</a> / Library{% endblock %}
 {% block content %}
 <div class="full-width-page">
+
+<div class="ildb-table-tabs">
+    <a class="ildb-table-tab{{ ' active' if tab == 'catalog' else '' }}" href="{{ url_for('library.index', tab='catalog') }}">Catalog</a>
+    <a class="ildb-table-tab{{ ' active' if tab == 'requests' else '' }}" href="{{ url_for('library.index', tab='requests') }}">My Requests{% if tab_counts.pending %} <span class="genre-tab-count">{{ tab_counts.pending }}</span>{% endif %}</a>
+    <a class="ildb-table-tab{{ ' active' if tab == 'loans' else '' }}" href="{{ url_for('library.index', tab='loans') }}">My Loans{% if tab_counts.issued %} <span class="genre-tab-count">{{ tab_counts.issued }}</span>{% endif %}</a>
+</div>
+
+{% if not has_library_user %}
+<p class="ildb-empty">No library user record is linked to your account, so requests and loans can't be shown. Catalog browsing still works.</p>
+{% endif %}
+
+{% if tab == 'catalog' %}
 {% set genres = books | map(attribute='genre') | select | unique | sort | list %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
     <div class="genre-tabs" role="tablist" style="flex: 1;">
@@ -27,7 +39,6 @@
             <th>Author</th>
             <th>Year</th>
             <th>Genre</th>
-            <th>Location</th>
             <th>Availability</th>
         </tr>
         </thead>
@@ -44,7 +55,6 @@
             "Genre": book["genre"],
             "Series": book["series"],
             "Volume": book["volume"],
-            "Location": (book["shelf_name"] + (", Case " + book["case_number"] if book["case_number"] else "")) if book["shelf_name"] else "",
             "Availability": book["availability"],
             "Call No.": book["library_id"],
             "L_id": book["l_id"],
@@ -56,17 +66,77 @@
             <td>{{ book['author'] }}</td>
             <td>{{ book['publish_year'] }}</td>
             <td>{{ book['genre'] }}</td>
-            <td>
-                {%- if book["shelf_name"] -%}
-                    Shelf {{ book["shelf_name"] }}
-                    {%- if book["case_number"] %}, Case {{ book["case_number"] }}{% endif -%}
-                {%- endif -%}
-            </td>
             <td>{{ book['availability'] }}</td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
 </div>
+
+{% elif tab == 'requests' %}
+<div class="table-wrap">
+    <table class="data-table" data-no-sort>
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>Book</th>
+            <th>Author</th>
+            <th>Requested At</th>
+            <th>Status</th>
+            <th>Decided At</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for req in my_requests %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ req['title'] }}</td>
+            <td>{{ req['author'] }}</td>
+            <td>{{ req['requested_at'] or '—' }}</td>
+            <td><span class="request-status request-status-{{ req['status'] }}">{{ req['status'] }}</span></td>
+            <td>{{ req['approved_at'] or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6">You have no pending or rejected requests. Requested books show up here until an admin accepts or rejects them.</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% elif tab == 'loans' %}
+<div class="table-wrap">
+    <table class="data-table" data-no-sort>
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>Book</th>
+            <th>Author</th>
+            <th>Status</th>
+            <th>Taken At</th>
+            <th>Returned At</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for loan in my_loans %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ loan['title'] }}</td>
+            <td>{{ loan['author'] }}</td>
+            <td><span class="request-status request-status-{{ loan['status'] }}">{{ loan['status'] }}</span></td>
+            <td>{{ loan['taken_at'] or '—' }}</td>
+            <td>{{ loan['returned_at'] or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6">You have no issued or returned books yet. Request a book from the Catalog tab to get started.</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 </div>
 {% endblock %}

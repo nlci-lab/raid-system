@@ -10,7 +10,9 @@ from email.mime.text import MIMEText
 from functools import wraps
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
 
+from modules.audit import log_action
 from modules.config import DEV_BYPASS_CODE, SMTP_EMAIL, SMTP_PASSCODE
 from modules.db import USERS_DB
 
@@ -47,6 +49,7 @@ _USER_DETAIL_COLUMNS = {
     "login_count": "INTEGER NOT NULL DEFAULT 0",
     "last_ip": "TEXT",
     "last_user_agent": "TEXT",
+    "password_hash": "TEXT",
 }
 
 
@@ -109,6 +112,12 @@ def _is_allowed_email(email):
 
 
 def _send_via_smtp(to_email, subject, text):
+    """Send an email via Gmail SMTP.
+
+    Local-dev-only mail transport. Production sends via Brevo's HTTP API
+    instead (outbound SMTP is blocked on raid-server's network) — do not
+    copy this function over production's modules/auth/__init__.py.
+    """
     msg = MIMEText(text)
     msg["Subject"] = subject
     msg["From"] = SMTP_EMAIL
@@ -158,6 +167,8 @@ def login():
         raw_input = request.form.get("email", "").strip()
         email = raw_input.lower()
 
+        # DEV_BYPASS_CODE branch — typed into the email field in place of an
+        # address, logs straight in as DEV_BYPASS_EMAIL for local/AI testing.
         if DEV_BYPASS_CODE and raw_input == DEV_BYPASS_CODE:
             logging.getLogger(__name__).warning(
                 "DEV_BYPASS_CODE used — bypassing OTP login for AI/dev testing (%s)", DEV_BYPASS_EMAIL
@@ -179,32 +190,60 @@ def login():
             flash("Please enter a valid email address.", "error")
             return render_template("login.html", email=email)
 
-        existing = _otp_store.get(email)
-        if existing and time.time() - existing["sent_at"] < OTP_RESEND_COOLDOWN:
-            flash("A code was already sent. Please wait a moment before requesting another.", "error")
+        # Look up user and check password.
+        conn = sqlite3.connect(USERS_DB)
+        try:
+            _ensure_user_detail_columns(conn)
+            user_row = conn.execute(
+                "SELECT id, password_hash FROM users WHERE lower(email) = ?", (email,)
+            ).fetchone()
+        finally:
+            conn.close()
+
+        password = request.form.get("password", "").strip()
+
+        # If user doesn't exist or has no password_hash, send OTP to set one.
+        if user_row is None or not user_row[1]:
+            existing = _otp_store.get(email)
+            if existing and time.time() - existing["sent_at"] < OTP_RESEND_COOLDOWN:
+                flash("A code was already sent. Please wait a moment before requesting another.", "error")
+                session["pending_email"] = email
+                session["otp_purpose"] = "set_password"
+                return redirect(url_for("auth.verify"))
+
+            code = _generate_otp()
+            _otp_store[email] = {
+                "hash": _hash_otp(email, code),
+                "expires_at": time.time() + OTP_TTL_SECONDS,
+                "attempts": 0,
+                "sent_at": time.time(),
+            }
+
+            try:
+                _send_otp_email(email, code)
+            except Exception:
+                traceback.print_exc()
+                logging.getLogger(__name__).exception("Failed to send OTP email to %s", email)
+                _otp_store.pop(email, None)
+                flash("Could not send the verification email. Please try again.", "error")
+                return render_template("login.html", email=email)
+
             session["pending_email"] = email
+            session["otp_purpose"] = "set_password"
+            flash("We don't have a password on file for you yet — enter the code we just emailed you to set one.", "info")
             return redirect(url_for("auth.verify"))
 
-        code = _generate_otp()
-        _otp_store[email] = {
-            "hash": _hash_otp(email, code),
-            "expires_at": time.time() + OTP_TTL_SECONDS,
-            "attempts": 0,
-            "sent_at": time.time(),
-        }
-
-        try:
-            _send_otp_email(email, code)
-        except Exception:
-            traceback.print_exc()
-            logging.getLogger(__name__).exception("Failed to send OTP email to %s", email)
-            _otp_store.pop(email, None)
-            flash("Could not send the verification email. Please try again.", "error")
+        # User exists and has a password — validate it.
+        if not check_password_hash(user_row[1], password):
+            flash("Incorrect email or password.", "error")
             return render_template("login.html", email=email)
 
-        session["pending_email"] = email
-        flash(f"A verification code was sent to {email}.", "info")
-        return redirect(url_for("auth.verify"))
+        # Password is correct — log them in.
+        _record_login(email)
+        session["logged_in"] = True
+        session["user_email"] = email
+        flash("Logged in successfully.", "info")
+        return redirect(url_for("hello"))
 
     return render_template("login.html")
 
@@ -222,36 +261,126 @@ def verify():
         if not entry or time.time() > entry["expires_at"]:
             _otp_store.pop(email, None)
             session.pop("pending_email", None)
+            session.pop("otp_purpose", None)
             flash("That code has expired. Please request a new one.", "error")
-            return redirect(url_for("auth.login"))
-
-        if entry["attempts"] >= MAX_ATTEMPTS:
-            _otp_store.pop(email, None)
-            session.pop("pending_email", None)
-            flash("Too many incorrect attempts. Please request a new code.", "error")
             return redirect(url_for("auth.login"))
 
         if _hash_otp(email, code) != entry["hash"]:
             entry["attempts"] += 1
+            if entry["attempts"] >= MAX_ATTEMPTS:
+                _otp_store.pop(email, None)
+                session.pop("pending_email", None)
+                session.pop("otp_purpose", None)
+                flash("Too many incorrect attempts. Please request a new code.", "error")
+                return redirect(url_for("auth.login"))
             flash("Incorrect code. Please try again.", "error")
             return render_template("verify_otp.html", email=email)
 
+        # OTP verified — set otp_verified_email and redirect to set-password.
         _otp_store.pop(email, None)
         session.pop("pending_email", None)
-        is_new_user = _register_user(email)
-        if is_new_user:
-            try:
-                _send_welcome_email(email)
-            except Exception:
-                pass
-        else:
-            _record_login(email)
-        session["logged_in"] = True
-        session["user_email"] = email
-        flash("Logged in successfully.", "info")
-        return redirect(url_for("hello"))
+        session["otp_verified_email"] = email
+        return redirect(url_for("auth.set_password"))
 
     return render_template("verify_otp.html", email=email)
+
+
+@auth.route("/login/forgot", methods=["GET", "POST"])
+def forgot():
+    if session.get("logged_in"):
+        return redirect(url_for("hello"))
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+
+        if not _is_allowed_email(email):
+            # Generic message to not leak account existence.
+            flash("If that email is registered, a code has been sent.", "info")
+            return render_template("forgot_password.html")
+
+        existing = _otp_store.get(email)
+        if existing and time.time() - existing["sent_at"] < OTP_RESEND_COOLDOWN:
+            flash("If that email is registered, a code has been sent.", "info")
+            return render_template("forgot_password.html")
+
+        code = _generate_otp()
+        _otp_store[email] = {
+            "hash": _hash_otp(email, code),
+            "expires_at": time.time() + OTP_TTL_SECONDS,
+            "attempts": 0,
+            "sent_at": time.time(),
+        }
+
+        try:
+            _send_otp_email(email, code)
+        except Exception:
+            traceback.print_exc()
+            logging.getLogger(__name__).exception("Failed to send OTP email to %s", email)
+            _otp_store.pop(email, None)
+            # Still show generic message for security.
+            flash("If that email is registered, a code has been sent.", "info")
+            return render_template("forgot_password.html")
+
+        session["pending_email"] = email
+        session["otp_purpose"] = "reset"
+        flash("If that email is registered, a code has been sent.", "info")
+        return redirect(url_for("auth.verify"))
+
+    return render_template("forgot_password.html")
+
+
+@auth.route("/login/set-password", methods=["GET", "POST"])
+def set_password():
+    email = session.get("otp_verified_email")
+    if not email:
+        return redirect(url_for("auth.login"))
+
+    if request.method == "POST":
+        password = request.form.get("password", "").strip()
+        confirm = request.form.get("confirm_password", "").strip()
+
+        if not password or not confirm:
+            flash("Please enter and confirm your password.", "error")
+            return render_template("set_password.html")
+
+        if password != confirm:
+            flash("Passwords do not match.", "error")
+            return render_template("set_password.html")
+
+        if len(password) < 8:
+            flash("Password must be at least 8 characters.", "error")
+            return render_template("set_password.html")
+
+        # Hash and store the password.
+        password_hash = generate_password_hash(password)
+        conn = sqlite3.connect(USERS_DB)
+        try:
+            _ensure_user_detail_columns(conn)
+            is_new_user = _register_user(email)
+            conn.execute(
+                "UPDATE users SET password_hash = ? WHERE lower(email) = ?",
+                (password_hash, email),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Log them in first so the audit entry below attributes correctly.
+        session["logged_in"] = True
+        session["user_email"] = email
+        session.pop("otp_verified_email", None)
+        session.pop("otp_purpose", None)
+
+        # Log the action.
+        log_action("auth", "password_set", f"Email: {email}")
+
+        # If this wasn't a brand-new registration, record the login.
+        if not is_new_user:
+            _record_login(email)
+        flash("Password set. You're now logged in.", "info")
+        return redirect(url_for("hello"))
+
+    return render_template("set_password.html")
 
 
 @auth.route("/logout")

@@ -46,7 +46,7 @@
     <p class="auth-hint">Need access to a section you don't have? Tell an admin why and they'll review it.</p>
     <form method="post" action="{{ url_for('access.submit_request') }}" class="auth-form">
         <label for="section">Which section?</label>
-        <input type="text" id="section" name="section" placeholder="e.g. Dashboard, Internal Database, Chat..." required>
+        <input type="text" id="section" name="section" placeholder="e.g. Dashboard, Internal Database, Library..." required>
         <label for="reason">Why do you need access?</label>
         <textarea id="reason" name="reason" rows="4" placeholder="Explain why you need access..." required></textarea>
         <button type="submit" class="auth-submit">Request permission</button>

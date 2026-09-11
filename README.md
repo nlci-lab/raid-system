@@ -6,7 +6,7 @@ under-resourced languages through field survey work and produces the reports
 that inform Bible translation priorities.
 
 This app is the department's day-to-day internal tool: staff login,
-attendance, an internal blog, a book-lending library, team chat, an
+attendance, an internal blog, a book-lending library, an
 access-request/admin layer, and a read-only viewer over the department's
 internal SQLite databases. It is not a public-facing site.
 
@@ -21,7 +21,7 @@ committed placeholder template — see below). It is one part of a larger
 local project layout; the pieces that are **not** in this repository (and
 must not be committed to it) are:
 
-- the actual SQLite databases (staff records, attendance, chat, blog, library
+- the actual SQLite databases (staff records, attendance, blog, library
   loans, and the internal language database)
 - an internal architecture/deployment guide
 - runtime logs
@@ -45,7 +45,6 @@ yourself is the secrets file.
 | `apps/dashboard` | Home/admin dashboard, user management |
 | `apps/attendance` | Staff attendance tracking |
 | `apps/blog` | Internal team blog (posts stored as files, indexed in a small DB) |
-| `apps/chat` | Team chat with file attachments |
 | `apps/ai_chat` | Optional AI chat assistant backed by a local [Ollama](https://ollama.com) instance (`http://localhost:11434`) — inert if Ollama isn't running |
 | `apps/library` | Book catalog and lending/loan tracking, synced from a published Google Sheet |
 | `apps/access` | Lets a user request access to a section they were denied, and lets an admin approve/deny it |
@@ -81,7 +80,7 @@ above is everything actually imported by the code.
 
 - **Databases** — `apps/db.py` looks for a `db/` folder that is a
   **sibling of this app folder** (i.e. `../db/` relative to `app.py`),
-  containing `users.db`, `library.db`, `attendance.db`, `chat.db`, and
+  containing `users.db`, `library.db`, `attendance.db`, and
   `blog.db`. **As of the first-run bootstrap work, none of this needs to
   exist beforehand** — on import, `apps/db.py` creates `db/` if missing
   and creates the base `users` table if it isn't there yet (nothing else in
@@ -89,7 +88,7 @@ above is everything actually imported by the code.
   checkout crash with "no such table: users"); `apps/library` similarly
   bootstraps an empty `books` table so `/library`/the dashboard/the home
   page work before anyone has run the catalog sync. Every other app-owned
-  table (`posts`, `conversations`, `attendance`, `access_requests`,
+  table (`posts`, `attendance`, `access_requests`,
   `loans`, `audit_log`, ...) already creates itself via its own
   `CREATE TABLE IF NOT EXISTS` the first time that module's `get_conn()`
   runs — this was already true before this bootstrap work, confirmed still

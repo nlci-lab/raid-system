@@ -20,12 +20,12 @@ DB_DIR.mkdir(parents=True, exist_ok=True)
 USERS_DB = DB_DIR / "users.db"
 LIBRARY_DB = DB_DIR / "library.db"  # holds both the "books" catalog table and the "loans" log table
 ATTENDANCE_DB = DB_DIR / "attendance.db"
-CHAT_DB = DB_DIR / "chat.db"
 BLOG_DB = DB_DIR / "blog.db"
+CHAT_DB = DB_DIR / "chat.db"
 ILDB_DB = DB_DIR / "ildb.db"
 
 # The base `users` table itself. Every other module (auth, library,
-# dashboard, chat, blog, access, ai_chat, attendance, audit) reads it,
+# dashboard, blog, access, ai_chat, attendance, audit) reads it,
 # ATTACHes it, or ALTERs it onto an assumed-existing table — but none of
 # them ever CREATE it: apps/auth._ensure_user_detail_columns() only adds
 # extra columns (password_hash, login_count, ...) onto a `users` table it

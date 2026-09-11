@@ -3,8 +3,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("table.data-table").forEach(setupTableSort);
     setupRowDetail();
     setupFormattingToolbars();
-    setupChatPopovers();
-    setupChatThread();
     setupDashboardNav();
     setupGenreTabs();
     setupStickyToolbar();
@@ -228,41 +226,6 @@ function setupDashboardNav() {
             });
         });
     });
-}
-
-function setupChatPopovers() {
-    const popovers = document.querySelectorAll(".chat-popover");
-    if (!popovers.length) return;
-
-    document.addEventListener("click", (event) => {
-        popovers.forEach((popover) => {
-            if (popover.open && !popover.contains(event.target)) {
-                popover.open = false;
-            }
-        });
-    });
-
-    popovers.forEach((popover) => {
-        popover.addEventListener("toggle", () => {
-            if (!popover.open) return;
-            popovers.forEach((other) => {
-                if (other !== popover) other.open = false;
-            });
-        });
-    });
-}
-
-function setupChatThread() {
-    const thread = document.getElementById("chat-thread");
-    if (thread) thread.scrollTop = thread.scrollHeight;
-
-    const fileInput = document.querySelector(".chat-attach-btn input[type=file]");
-    const count = document.querySelector(".chat-attach-count");
-    if (fileInput && count) {
-        fileInput.addEventListener("change", () => {
-            count.textContent = fileInput.files.length ? String(fileInput.files.length) : "";
-        });
-    }
 }
 
 function setupFormattingToolbars() {

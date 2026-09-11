@@ -2,13 +2,37 @@
 {% block title %}RAIDsystem — Chat{% endblock %}
 {% block breadcrumb %}<a href="/">Home</a> / Chat{% endblock %}
 {% block content %}
-<div class="chat-app">
-    {% include "chat_sidebar.html" %}
-    <div class="chat-main chat-main-empty">
-        <div class="chat-empty-state">
-            <span class="chat-empty-icon">💬</span>
-            <p>Select a chat to start messaging</p>
+<div class="chat-title-bar">RAID Chat</div>
+<div class="chat-messages-area" id="chatMessagesArea">
+    {% for m in messages %}
+    <div class="chat-message {{ 'chat-message-out' if m.is_mine else 'chat-message-in' }}">
+        <span class="chat-message-sender">{{ m.sender_name }}</span>
+        <div class="chat-message-bubble">
+            {% if m.body %}<div>{{ m.body }}</div>{% endif %}
+            {% if m.attachment_original_name %}
+            <a class="chat-message-attachment" href="{{ url_for('chat.download_attachment', message_id=m.id) }}">
+                📎 {{ m.attachment_original_name }}
+            </a>
+            {% endif %}
         </div>
+        <span class="chat-message-time">{{ m.created_at }}</span>
     </div>
+    {% else %}
+    <p class="blog-empty">No messages yet — say something.</p>
+    {% endfor %}
 </div>
+<form class="chat-box-placeholder" method="post" action="{{ url_for('chat.send') }}" enctype="multipart/form-data">
+    <label class="chat-box-attach" title="Attach a file">
+        📎
+        <input type="file" name="file" hidden onchange="this.closest('form').querySelector('.chat-box-filename').textContent = this.files[0] ? this.files[0].name : '';">
+    </label>
+    <input type="text" name="body" class="chat-box-input" placeholder="Type a message…" autocomplete="off" autofocus>
+    <span class="chat-box-filename"></span>
+    <button type="submit" class="chat-box-send">Send</button>
+</form>
+<script>
+    // Land scrolled to the newest message on load.
+    var area = document.getElementById("chatMessagesArea");
+    if (area) area.scrollTop = area.scrollHeight;
+</script>
 {% endblock %}

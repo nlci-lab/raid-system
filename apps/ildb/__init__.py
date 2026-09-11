@@ -1,7 +1,7 @@
 """Internal Database module.
 
 Read-only data-table viewer over every .db file in db/ — the app's own
-SQLite databases (users, books, chat, ildb, ...), picked one at a time via
+SQLite databases (users, books, ildb, ...), picked one at a time via
 the ?db= query param, one table at a time via ?table=. Admin-only, since
 this now exposes users.db/audit_log alongside the original NLCI-India BT
 Language Database data (see achieved/schema.sql and

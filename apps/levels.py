@@ -117,7 +117,7 @@ ILDB_LEVEL = 1.0       # /internal-database — dev/admin only (browses every .d
                        # file in db/, including users.db/audit_log, not just ildb.db)
 MANAGER_LEVEL = 3.0    # manager actions (attendance marking, blog creation, library
                        # accept/reject/return, access-request resolution) and
-                       # chat/attendance *visibility* — dev/admin/data_manager/raid_staff
+                       # attendance *visibility* — dev/admin/data_manager/raid_staff
 VIEWER_LEVEL = 4.0     # profile page, languages, library browsing/requests —
                        # everyone logged in except external (lvl-5)
 

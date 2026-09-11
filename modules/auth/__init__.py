@@ -9,11 +9,20 @@ import traceback
 from email.mime.text import MIMEText
 from functools import wraps
 
+import requests
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from modules.audit import log_action
-from modules.config import DEV_BYPASS_CODE, SMTP_EMAIL, SMTP_PASSCODE
+from modules.config import (
+    BREVO_API_KEY,
+    BREVO_FROM_EMAIL,
+    BREVO_FROM_NAME,
+    DEV_BYPASS_CODE,
+    DEV_SKIP_OTP,
+    SMTP_EMAIL,
+    SMTP_PASSCODE,
+)
 from modules.db import USERS_DB
 
 auth = Blueprint("auth", __name__, template_folder="templates")
@@ -114,9 +123,12 @@ def _is_allowed_email(email):
 def _send_via_smtp(to_email, subject, text):
     """Send an email via Gmail SMTP.
 
-    Local-dev-only mail transport. Production sends via Brevo's HTTP API
-    instead (outbound SMTP is blocked on raid-server's network) — do not
-    copy this function over production's modules/auth/__init__.py.
+    Local-dev mail transport, used whenever BREVO_API_KEY isn't configured
+    (i.e. the local pass_raid_system.txt has no brevo_* keys). Outbound SMTP
+    (port 465/587) is blocked at the network level on raid-server, so
+    production never falls through to this — it always has BREVO_API_KEY
+    set and uses _send_via_brevo below instead. This function must stay
+    correct for local dev, but should never be the active path in production.
     """
     msg = MIMEText(text)
     msg["Subject"] = subject
@@ -128,8 +140,56 @@ def _send_via_smtp(to_email, subject, text):
         server.sendmail(SMTP_EMAIL, [to_email], msg.as_string())
 
 
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+
+
+def _send_via_brevo(to_email, subject, text):
+    """Send an email via Brevo's transactional HTTP API.
+
+    This is production's mail transport. Outbound SMTP (port 465/587) is
+    blocked at the network level on raid-server, so delivery goes over
+    HTTPS (port 443) via Brevo's API instead. Do not add an smtplib/SMTP_SSL
+    fallback *inside this function* — it will silently fail/timeout in
+    production. (The module-level fallback to _send_via_smtp when
+    BREVO_API_KEY isn't configured, in _send_otp_email/_send_welcome_email
+    below, is what makes local dev work without Brevo — that's a separate,
+    deliberate mechanism, not a change to this function.)
+    """
+    if not BREVO_API_KEY:
+        raise RuntimeError("BREVO_API_KEY is not configured")
+
+    payload = {
+        "sender": {"name": BREVO_FROM_NAME, "email": BREVO_FROM_EMAIL},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "textContent": text,
+    }
+    resp = requests.post(
+        BREVO_API_URL,
+        headers={
+            "api-key": BREVO_API_KEY,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        json=payload,
+        timeout=10,
+    )
+    if resp.status_code != 201:
+        raise RuntimeError(f"Brevo API send failed ({resp.status_code}): {resp.text}")
+
+
+def _send_mail(to_email, subject, text):
+    """Single entry point every route below calls. Uses Brevo when
+    BREVO_API_KEY is configured (production), otherwise falls back to local
+    Gmail SMTP (local dev, where outbound SMTP isn't network-blocked)."""
+    if BREVO_API_KEY:
+        _send_via_brevo(to_email, subject, text)
+    else:
+        _send_via_smtp(to_email, subject, text)
+
+
 def _send_otp_email(to_email, code):
-    _send_via_smtp(
+    _send_mail(
         to_email,
         "Your RAIDsystem login code",
         f"Your RAIDsystem verification code is: {code}\n\n"
@@ -139,7 +199,7 @@ def _send_otp_email(to_email, code):
 
 
 def _send_welcome_email(to_email):
-    _send_via_smtp(
+    _send_mail(
         to_email,
         "Welcome to RAIDsystem",
         f"Hi {_name_from_email(to_email)},\n\n"
@@ -189,6 +249,28 @@ def login():
         if not _is_allowed_email(email):
             flash("Please enter a valid email address.", "error")
             return render_template("login.html", email=email)
+
+        # DEV_SKIP_OTP branch — env-var gated (must be explicitly exported
+        # before starting the app, never just present in a config file), so
+        # it can never turn on silently. Bypasses OTP entirely for any
+        # @nlife.in address. Distinct from the DEV_BYPASS_CODE branch above
+        # (which requires typing a specific magic code into the email
+        # field); this one activates for real-looking @nlife.in addresses.
+        if DEV_SKIP_OTP and email.endswith(f"@{ALLOWED_DOMAIN}"):
+            logging.getLogger(__name__).warning(
+                "DEV_SKIP_OTP active — bypassing OTP for %s", email
+            )
+            is_new_user = _register_user(email)
+            if is_new_user:
+                try:
+                    _send_welcome_email(email)
+                except Exception:
+                    pass
+            else:
+                _record_login(email)
+            session["logged_in"] = True
+            session["user_email"] = email
+            return render_template("dev_verify.html", email=email)
 
         # Look up user and check password.
         conn = sqlite3.connect(USERS_DB)

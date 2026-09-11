@@ -33,3 +33,12 @@ pass_raid_system.txt
 *.bak
 *.bak.*
 *~
+
+# Actual blog post content is runtime data (modules/blog.BLOGS_DIR is its
+# source of truth on disk), not code — same "codebase vs. data" split as
+# db/ living outside this repo entirely. Tracking these caused local test
+# posts and production's real posts to diverge and fight each other across
+# environments; keep the module directory itself (and its empty-dir
+# behavior via BLOGS_DIR.mkdir(exist_ok=True) in code) but never the .md
+# content inside it.
+modules/blog/blogs/*.md

@@ -10,8 +10,8 @@ attendance, an internal blog, a book-lending library, an
 access-request/admin layer, and a read-only viewer over the department's
 internal SQLite databases. It is not a public-facing site.
 
-Current version: **5.1.0** (see [`VERSION`](VERSION); shown in the footer of
-every page).
+Current version: **5.1.0** (see [`VERSION`](VERSION); shown next to the
+"RAIDsystem" title in the header of every page).
 
 ## What's in this repository
 
@@ -152,6 +152,36 @@ python app.py
 
 Runs a Flask dev server on `0.0.0.0:5055` with debug mode on. Production
 deployment (gunicorn + nginx, systemd) is handled outside this repository.
+
+## Deployment: the raid-dev-pipeline
+
+Every change to this codebase moves through **local → GitHub → production**,
+always in that order, all three stages, no shortcuts:
+
+1. **Local** — developed and tested against a local `db/` that holds only
+   demo/synthetic data, never real RAID-NLCI records.
+2. **GitHub** (`nlci-lab/raid-system`) — the source of truth. Local changes
+   are committed and pushed to **both** `main` and `dev` (kept in sync;
+   `dev` is not a diverging branch here).
+3. **Production** (raid-server) — pulls from GitHub and restarts:
+   ```bash
+   cd /root/raid_system/core
+   git fetch origin
+   git merge --ff-only origin/main
+   systemctl restart raid-system
+   ```
+
+This repository is codebase only (see "What's in this repository" above) —
+`db/`, `guide/`, `blogs/`, `logs/`, and the secrets file are never part of
+what moves through the pipeline; only `app.py`, `apps/`, `templates/`, and
+`static/` do. Any change to the DB *schema* needs its own migration code
+(see each module's `get_conn()` — new columns are added via
+`PRAGMA table_info` + `ALTER TABLE ADD COLUMN`, never a destructive
+recreate), since production's existing databases carry real data forward
+across a deploy.
+
+The pipeline always runs to completion — pushing to GitHub is never treated
+as "done" on its own; production is pulled and restarted in the same pass.
 
 ## License / audience
 

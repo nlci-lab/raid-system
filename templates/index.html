@@ -65,28 +65,6 @@
         {% endif %}
     </section>
 
-    {% if tier <= 4 %}
-    <section class="portal-section">
-        <div class="portal-section-header">
-            <h2 class="portal-section-title">My Library Loans</h2>
-            <a class="portal-section-link" href="/library">Go to Library</a>
-        </div>
-        {% if home_loans %}
-        <div class="loan-list">
-            {% for loan in home_loans %}
-            <div class="loan-row">
-                <span class="loan-title">{{ loan['title'] }}</span>
-                <span class="loan-meta">Borrowed {{ loan['issued_at'] }}</span>
-                <span class="request-status request-status-issued">Active</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <p class="blog-empty">You have no active loans.</p>
-        {% endif %}
-    </section>
-    {% endif %}
-
     <section class="portal-section">
         <h2 class="portal-section-title">Quick Access</h2>
         <div class="tile-grid">

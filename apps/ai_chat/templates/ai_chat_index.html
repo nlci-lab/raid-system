@@ -685,16 +685,45 @@
                 body: JSON.stringify({ messages: conversationHistory })
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
-                const error = data.error || "Unknown error";
-                markRowAsError(pending.row, pending.content, error);
+                // Error responses are still plain JSON (see send_message) --
+                // only a successful reply streams as plain text.
+                let errorMsg = "Unknown error";
+                try {
+                    const data = await response.json();
+                    errorMsg = data.error || errorMsg;
+                } catch (_) { /* body wasn't JSON — keep the generic message */ }
+                markRowAsError(pending.row, pending.content, errorMsg);
             } else {
-                const assistantReply = data.reply;
-                pending.row.classList.remove("ai-msg-pending");
-                pending.content.textContent = assistantReply;
-                conversationHistory.push({ role: "assistant", content: assistantReply });
+                // Stream the reply in as it generates -- on this CPU-only
+                // setup a full reply can take 10s-70s+, so showing text
+                // progressively (same as ChatGPT/Claude's own UI) makes the
+                // same wait feel far less dead than one big pop-in at the end.
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullReply = "";
+                let gotFirstChunk = false;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const textChunk = decoder.decode(value, { stream: true });
+                    if (!textChunk) continue;
+                    if (!gotFirstChunk) {
+                        pending.row.classList.remove("ai-msg-pending");
+                        pending.content.textContent = "";
+                        gotFirstChunk = true;
+                    }
+                    fullReply += textChunk;
+                    pending.content.textContent = fullReply;
+                    scrollToBottom();
+                }
+
+                if (!gotFirstChunk) {
+                    markRowAsError(pending.row, pending.content, "No response received.");
+                } else {
+                    conversationHistory.push({ role: "assistant", content: fullReply });
+                }
             }
         } catch (err) {
             markRowAsError(pending.row, pending.content, "Network error: " + err.message);

@@ -5,7 +5,7 @@ import urllib.error
 from functools import wraps
 from pathlib import Path
 
-from flask import Blueprint, abort, jsonify, render_template, request, session
+from flask import Blueprint, Response, abort, jsonify, render_template, request, session, stream_with_context
 
 from apps.db import USERS_DB
 from apps.levels import MANAGER_LEVEL, current_level, level_label, tier
@@ -67,7 +67,11 @@ def index():
 @ai_chat.route("/ai-chat/send", methods=["POST"])
 @staff_required
 def send_message():
-    """Send a message to Ollama and get a response."""
+    """Stream a reply from Ollama back to the client as plain-text chunks
+    as they're generated, instead of waiting for the whole reply (which on
+    this CPU-only setup can take 10s-70s+) and sending it all at once. This
+    is purely a perceived-latency fix -- total generation time is the same,
+    the user just sees words appear instead of staring at a blank loader."""
     try:
         data = request.get_json()
         if not data or "messages" not in data:
@@ -87,10 +91,13 @@ def send_message():
         payload = {
             "model": MODEL_NAME,
             "messages": system_messages + messages,
-            "stream": False,
+            "stream": True,
         }
 
-        # Call Ollama API
+        # Open the connection to Ollama before committing to a streaming
+        # Flask response, so a connection failure (not running, wrong
+        # port, model missing) still comes back as a normal JSON error the
+        # existing client error-handling can show, not a broken stream.
         try:
             req = urllib.request.Request(
                 OLLAMA_API_URL,
@@ -98,23 +105,37 @@ def send_message():
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=60) as response:
-                result = json.loads(response.read().decode("utf-8"))
-                assistant_message = result.get("message", {}).get("content", "")
-                return jsonify({"reply": assistant_message})
-
-        except urllib.error.URLError as e:
+            ollama_response = urllib.request.urlopen(req, timeout=120)
+        except urllib.error.URLError:
             error_msg = f"Cannot reach Ollama at {OLLAMA_API_URL}. Is it running?"
             return jsonify({"error": error_msg}), 503
         except urllib.error.HTTPError as e:
             error_msg = f"Ollama error (HTTP {e.code}): {e.reason}"
             return jsonify({"error": error_msg}), 503
-        except json.JSONDecodeError:
-            error_msg = "Ollama returned invalid JSON"
-            return jsonify({"error": error_msg}), 503
-        except Exception as e:
-            error_msg = f"Error communicating with Ollama: {str(e)}"
-            return jsonify({"error": error_msg}), 503
+
+        def generate():
+            try:
+                for raw_line in ollama_response:
+                    line = raw_line.decode("utf-8").strip()
+                    if not line:
+                        continue
+                    try:
+                        chunk = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    content = chunk.get("message", {}).get("content", "")
+                    if content:
+                        yield content
+                    if chunk.get("done"):
+                        break
+            except Exception as e:
+                # Mid-stream failure -- nothing sent yet has an error format,
+                # so append a visible marker rather than silently truncating.
+                yield f"\n\n[Error while streaming: {e}]"
+            finally:
+                ollama_response.close()
+
+        return Response(stream_with_context(generate()), mimetype="text/plain")
 
     except Exception as e:
         return jsonify({"error": f"Internal error: {str(e)}"}), 500

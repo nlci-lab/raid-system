@@ -926,6 +926,10 @@ body:has(main .full-width-page) main {
 .tile-chat { --tile-bg: #f0f4ff; --tile-accent: #3b5bdb; }
 .tile-guide { --tile-bg: #f5f3ff; --tile-accent: #5b21b6; }
 .tile-report-archive { --tile-bg: #f4f6f1; --tile-accent: #3f6212; }
+.tile-audit-log { --tile-bg: #f5f5f4; --tile-accent: #44403c; }
+.tile-raid-manager { --tile-bg: #eef4f6; --tile-accent: #155e75; }
+.tile-raid-librarian { --tile-bg: #f8f3ea; --tile-accent: #92400e; }
+.tile-raid-bot { --tile-bg: #f0f4ff; --tile-accent: #3b5bdb; }
 
 /* Placeholder tiles for not-yet-built features: visually inert, no hover/click affordance. */
 .tile-disabled {
@@ -1133,12 +1137,44 @@ table.data-table tbody tr:last-child td {
     white-space: nowrap;
 }
 
+/* The audit log's first column holds a full ISO timestamp
+   ("2026-09-12T12:54:06"), not a short ID — the generic .data-table
+   first-child squeeze (width:1%) is meant for narrow ID/checkbox columns
+   and is unreliable under table-layout:fixed for anything wider (see the
+   #booksTable comment above): it rendered near-zero width here and the
+   timestamp text overflowed, visually overlapping the "By" column next to
+   it. Same fix as booksTable — an explicit width generous enough for the
+   full timestamp plus padding. */
+#auditTable th:first-child,
+#auditTable td:first-child {
+    width: 180px;
+    white-space: nowrap;
+}
+
 /* The ildb table has no narrow leading column, so it shouldn't inherit the
    generic .data-table first-child squeeze meant for ID/checkbox columns. */
 #ildbTable th:first-child,
 #ildbTable td:first-child {
     width: auto;
     white-space: normal;
+}
+
+/* Same story for the Server Status "Databases" table: its first column is
+   the database name (variable length, e.g. "attendance"), not a short ID —
+   the generic first-child squeeze rendered it near-zero width and
+   overlapped it with the Size column next to it. Here the SECOND column
+   is the genuinely narrow one (just a number), so give that the explicit
+   width instead. */
+#dbSizesTable th:first-child,
+#dbSizesTable td:first-child {
+    width: auto;
+    white-space: normal;
+}
+
+#dbSizesTable th:nth-child(2),
+#dbSizesTable td:nth-child(2) {
+    width: 100px;
+    white-space: nowrap;
 }
 
 /* Internal database tables can have many/wide columns — size to content and
@@ -2677,6 +2713,41 @@ body:has(main .chat-messages-area) main {
     color: rgba(255, 255, 255, 0.85);
 }
 
+/* Admin Dashboard's top-level split: "raid-system" (the app itself) vs.
+   "raid-server" (the machine it runs on). Same pill-tab look as
+   .ildb-table-tab above. Only present on dashboard_index.html — every
+   other dashboard page's .dashboard-app has no sibling tab bar, so this
+   never affects them. */
+.dashboard-top-tabs {
+    display: flex;
+    gap: 6px;
+    margin: 0 0 16px;
+}
+
+.dashboard-top-tab {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 18px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+.dashboard-top-tab:hover {
+    background: var(--row-hover);
+}
+
+.dashboard-top-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+}
+
 /* Dashboard — left panel for switching between tables */
 .dashboard-app {
     display: flex;
@@ -2696,6 +2767,16 @@ body:has(main .chat-messages-area) main {
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 12px;
+}
+
+.dashboard-nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dashboard-nav-group[hidden] {
+    display: none;
 }
 
 .dashboard-nav-item {
@@ -3202,5 +3283,109 @@ body:has(main .chat-messages-area) main {
     font-size: 0.75em;
     color: var(--muted);
     line-height: 1.3;
+}
+
+/* Admin Dashboard > Server Status */
+.server-status-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    margin-bottom: 20px;
+}
+
+.server-status-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.server-status-label {
+    font-size: 0.72em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.server-status-value {
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.server-status-sub {
+    font-size: 0.72em;
+    color: var(--muted);
+}
+
+.error-log-box {
+    max-height: 320px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 12px 14px;
+    font-family: "Consolas", "Menlo", monospace;
+    font-size: 0.8em;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Admin Dashboard > Terminal */
+.terminal-box {
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #0d1117;
+    border: 1px solid var(--border);
+}
+
+.terminal-output {
+    margin: 0;
+    padding: 14px;
+    height: 360px;
+    overflow-y: auto;
+    font-family: "Consolas", "Menlo", monospace;
+    font-size: 0.85em;
+    color: #c9d1d9;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.terminal-line-command {
+    color: #58a6ff;
+    font-weight: 600;
+}
+
+.terminal-line-error {
+    color: #f85149;
+}
+
+.terminal-line-stderr {
+    color: #f0883e;
+}
+
+.terminal-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid #21262d;
+    background: #161b22;
+}
+
+.terminal-prompt {
+    color: #58a6ff;
+    font-family: "Consolas", "Menlo", monospace;
+}
+
+.terminal-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #c9d1d9;
+    font-family: "Consolas", "Menlo", monospace;
+    font-size: 0.9em;
 }
 

@@ -1,40 +1,27 @@
 {% extends "base.html" %}
 {% block title %}RAIDsystem — Dashboard{% endblock %}
-{% block breadcrumb %}<a href="/">Home</a> / Dashboard{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / <a href="{{ url_for('dashboard.index') }}">Dashboard</a> / Admin{% endblock %}
 {% block content %}
+<div class="dashboard-top-tabs">
+    <button type="button" class="dashboard-top-tab active" data-tab="raid-system">raid-system</button>
+    <button type="button" class="dashboard-top-tab" data-tab="raid-server">raid-server</button>
+</div>
 <div class="dashboard-app full-width-page">
     <nav class="dashboard-sidebar">
+        <div class="dashboard-nav-group" data-nav-group="raid-system">
         <button type="button" class="dashboard-nav-item active" data-target="access-requests">
             <span class="dashboard-nav-icon">🔑</span>
             <span class="dashboard-nav-label">Access Requests</span>
             <span class="dashboard-nav-count">{{ access_requests|length }}</span>
-        </button>
-        <button type="button" class="dashboard-nav-item" data-target="book-requests">
-            <span class="dashboard-nav-icon">📖</span>
-            <span class="dashboard-nav-label">Book Requests</span>
-            <span class="dashboard-nav-count">{{ requests|length }}</span>
         </button>
         <button type="button" class="dashboard-nav-item" data-target="users">
             <span class="dashboard-nav-icon">👤</span>
             <span class="dashboard-nav-label">Users</span>
             <span class="dashboard-nav-count">{{ users|length }}</span>
         </button>
-        <button type="button" class="dashboard-nav-item" data-target="loans">
-            <span class="dashboard-nav-icon">📚</span>
-            <span class="dashboard-nav-label">Loans</span>
-            <span class="dashboard-nav-count">{{ loans|length }}</span>
-        </button>
-        <a class="dashboard-nav-item" href="{{ url_for('attendance.manager_dashboard') }}">
-            <span class="dashboard-nav-icon">🗓️</span>
-            <span class="dashboard-nav-label">RAID Manager Dash</span>
-        </a>
-        <a class="dashboard-nav-item" href="{{ url_for('library.admin_panel') }}">
-            <span class="dashboard-nav-icon">📚</span>
-            <span class="dashboard-nav-label">RAID Librarian Dash</span>
-        </a>
-        <a class="dashboard-nav-item" href="{{ url_for('ai_chat.dashboard_page') }}">
-            <span class="dashboard-nav-icon">🤖</span>
-            <span class="dashboard-nav-label">RAID Bot Dash</span>
+        <a class="dashboard-nav-item" href="{{ url_for('guide.view') }}">
+            <span class="dashboard-nav-icon">📖</span>
+            <span class="dashboard-nav-label">Guide</span>
         </a>
         {% if is_admin %}
         <a class="dashboard-nav-item" href="{{ url_for('dashboard.audit_log') }}">
@@ -42,6 +29,21 @@
             <span class="dashboard-nav-label">Audit Log</span>
         </a>
         {% endif %}
+        </div>
+        <div class="dashboard-nav-group" data-nav-group="raid-server" hidden>
+        <button type="button" class="dashboard-nav-item" data-target="server-status">
+            <span class="dashboard-nav-icon">🖥️</span>
+            <span class="dashboard-nav-label">Server Status</span>
+        </button>
+        <button type="button" class="dashboard-nav-item" data-target="terminal">
+            <span class="dashboard-nav-icon">⌨️</span>
+            <span class="dashboard-nav-label">Terminal</span>
+        </button>
+        <button type="button" class="dashboard-nav-item" data-target="file-explorer">
+            <span class="dashboard-nav-icon">🗂️</span>
+            <span class="dashboard-nav-label">File Explorer</span>
+        </button>
+        </div>
     </nav>
     <div class="dashboard-content">
     <section class="dashboard-section" data-section="access-requests">
@@ -93,51 +95,6 @@
     </div>
     </section>
 
-    <section class="dashboard-section" data-section="book-requests" hidden>
-    <h2>Book Requests</h2>
-    <div class="table-wrap">
-    <table class="data-table">
-        <thead>
-        <tr>
-            <th>SlNo</th>
-            <th>Book</th>
-            <th>Requested By</th>
-            <th>Requested At</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for req in requests %}
-        <tr>
-            <td>{{ loop.index }}</td>
-            <td>{{ req['book_title'] }}</td>
-            <td>{{ req['user_name'] }}</td>
-            <td>{{ req['requested_at'] }}</td>
-            <td><span class="request-status request-status-{{ req['status'] }}">{{ req['status'] }}</span></td>
-            <td>
-                {% if req['status'] == 'pending' %}
-                <div class="request-actions">
-                    <form method="post" action="{{ url_for('library.accept_request', loan_id=req['id']) }}">
-                        <button type="submit" class="request-accept-btn">Accept &amp; issue</button>
-                    </form>
-                    <form method="post" action="{{ url_for('library.reject_request', loan_id=req['id']) }}">
-                        <button type="submit" class="request-reject-btn">Reject</button>
-                    </form>
-                </div>
-                {% endif %}
-            </td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="6">No book requests yet.</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    </div>
-    </section>
-
     <section class="dashboard-section" data-section="users" hidden>
     <h2>Users</h2>
     <form class="add-user-form" method="post" action="{{ url_for('dashboard.add_user') }}">
@@ -182,47 +139,113 @@
     </div>
     </section>
 
-    <section class="dashboard-section" data-section="loans" hidden>
-    <h2>Loans</h2>
+    <section class="dashboard-section" data-section="server-status" hidden>
+    <h2>Server Status</h2>
+    <div class="server-status-grid">
+        <div class="server-status-card">
+            <span class="server-status-label">App Version</span>
+            <span class="server-status-value">{{ server_status.app_version }}</span>
+        </div>
+        <div class="server-status-card">
+            <span class="server-status-label">Python</span>
+            <span class="server-status-value">{{ server_status.python_version }}</span>
+        </div>
+        <div class="server-status-card">
+            <span class="server-status-label">Platform</span>
+            <span class="server-status-value">{{ server_status.platform }}</span>
+        </div>
+        <div class="server-status-card">
+            <span class="server-status-label">Uptime</span>
+            <span class="server-status-value">{{ server_status.uptime }}</span>
+            <span class="server-status-sub">since {{ server_status.started_at }}</span>
+        </div>
+        {% if server_status.resources.available %}
+        <div class="server-status-card">
+            <span class="server-status-label">CPU</span>
+            <span class="server-status-value">{{ server_status.resources.cpu_percent }}%</span>
+        </div>
+        <div class="server-status-card">
+            <span class="server-status-label">Memory</span>
+            <span class="server-status-value">{{ server_status.resources.memory_percent }}%</span>
+        </div>
+        <div class="server-status-card">
+            <span class="server-status-label">Disk</span>
+            <span class="server-status-value">{{ server_status.resources.disk_percent }}%</span>
+        </div>
+        {% else %}
+        <div class="server-status-card">
+            <span class="server-status-label">CPU / Memory / Disk</span>
+            <span class="server-status-value">not available</span>
+            <span class="server-status-sub">psutil isn't installed here</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <h3 class="ai-bot-dash-subheading">Databases</h3>
     <div class="table-wrap">
-    <table class="data-table">
+    <table class="data-table" id="dbSizesTable">
         <thead>
         <tr>
-            <th>SlNo</th>
-            <th>Book Title</th>
-            <th>Requested By</th>
-            <th>Requested At</th>
-            <th>Approved By</th>
-            <th>Approved At</th>
-            <th>Status</th>
-            <th>Returned</th>
-            <th>Actions</th>
+            <th>Database</th>
+            <th>Size (MB)</th>
         </tr>
         </thead>
         <tbody>
-        {% for loan in loans %}
+        {% for db in server_status.databases %}
         <tr>
-            <td>{{ loop.index }}</td>
-            <td>{{ loan['title'] }}</td>
-            <td>{{ loan['user_name'] }}</td>
-            <td>{{ loan['requested_at'] or '—' }}</td>
-            <td>{{ loan['issued_by'] or '—' }}</td>
-            <td>{{ loan['issued_at'] or '—' }}</td>
-            <td>{{ loan['status'] }}</td>
-            <td>{% if loan['returned_at'] %}{{ loan['returned_at'] }} by {{ loan['returned_by'] }}{% else %}—{% endif %}</td>
-            <td>
-                {% if loan['status'] == 'issued' %}
-                <form method="post" action="{{ url_for('library.return_loan', loan_id=loan['id']) }}">
-                    <button type="submit" class="request-accept-btn">Mark returned</button>
-                </form>
-                {% endif %}
-            </td>
+            <td>{{ db.name }}</td>
+            <td>{{ db.size_mb }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="2">No databases found.</td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
     </div>
+
+    <h3 class="ai-bot-dash-subheading">System Error Log</h3>
+    <p class="ai-bot-dash-note">
+        Unhandled exceptions and warnings logged by the app itself (not admin actions — see Audit Log for those).
+        Newest first, last {{ error_log|length }} entries shown.
+    </p>
+    <div class="table-wrap">
+        <pre class="error-log-box">{% if error_log %}{% for line in error_log %}{{ line }}
+{% endfor %}{% else %}No errors logged yet.{% endif %}</pre>
+    </div>
+    </section>
+
+    <section class="dashboard-section" data-section="terminal" hidden>
+    <h2>Terminal</h2>
+    <p class="ai-bot-dash-note">
+        Runs directly on the server this app is deployed on, with no restrictions on what commands can be run.
+        Every command is written to the Audit Log.
+    </p>
+    <div class="terminal-box" id="terminalBox">
+        <pre class="terminal-output" id="terminalOutput"></pre>
+        <form class="terminal-form" id="terminalForm" autocomplete="off">
+            <span class="terminal-prompt">$</span>
+            <input type="text" class="terminal-input" id="terminalInput" placeholder="Type a command and press Enter…" autocomplete="off" spellcheck="false">
+        </form>
+    </div>
+    </section>
+
+    <section class="dashboard-section" data-section="file-explorer" hidden>
+    <h2>File Explorer</h2>
+    <p class="ai-bot-dash-note">
+        Browses this app's own directory tree, read-only preview for text files.
+        For editing, deleting, or moving anything, use the Terminal instead.
+    </p>
+    <div class="fe-breadcrumb" id="feBreadcrumb"></div>
+    <div class="fe-listing" id="feListing"></div>
+    <div class="fe-preview-wrap">
+        <p class="fe-preview-name" id="fePreviewName"></p>
+        <pre class="fe-preview" id="fePreview" hidden></pre>
+    </div>
     </section>
     </div>
 </div>
+<script src="{{ url_for('static', filename='js/terminal.js') }}"></script>
+<script src="{{ url_for('static', filename='js/file_explorer.js') }}"></script>
 {% endblock %}

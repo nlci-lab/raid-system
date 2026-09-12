@@ -1,12 +1,16 @@
+import subprocess
 import sqlite3
+from datetime import datetime
 from functools import wraps
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session, url_for
 
 from apps.access import SCHEMA as ACCESS_REQUESTS_SCHEMA
 from apps.audit import log_action, recent_entries
+from apps.config import PROJECT_ROOT
 from apps.db import LIBRARY_DB, USERS_DB
 from apps.library import _ensure_books_table, _ensure_loans_table
+from apps.server_status import get_status, read_error_log
 from apps.levels import (
     ADMIN_LEVEL,
     ANONYMOUS_LEVEL,
@@ -126,10 +130,39 @@ def _dashboard_context():
 @dashboard.route("/dashboard")
 @admin_required
 def index():
+    """The dashboard hub -- a tile grid linking to all 13 dashboards in the
+    app as separate tiles (no consolidation), same visual style as the home
+    page's Quick Access grid. A sub-leveled user (director, manager,
+    developer, ...) still auto-lands on their own labeled variant of the
+    admin dashboard first (unchanged, see SUB_LEVEL_DASHBOARD_ENDPOINTS)
+    since that's just org-labeling of an identity, not a preference about
+    browsing; anyone landing on the hub itself (plain dev/admin, or a
+    sub-leveled user who clicks back to Dashboard from elsewhere) sees all
+    13 dashboards -- their own admin variant included -- as individual
+    tiles, since that's the whole point of the hub."""
     own_dashboard = SUB_LEVEL_DASHBOARD_ENDPOINTS.get(current_level())
     if own_dashboard:
         return redirect(url_for(own_dashboard))
-    return render_template("dashboard_index.html", **_dashboard_context())
+    return render_template("dashboard_hub.html")
+
+
+@dashboard.route("/dashboard/admin")
+@admin_required
+def admin_dashboard():
+    """The actual admin dashboard content (Access Requests, Book Requests,
+    Users, Loans) -- what used to be the only thing at plain /dashboard.
+    Still reachable directly here; /dashboard itself is now the hub above.
+
+    Server Status + the error log are admin-page-specific (not part of
+    _dashboard_context(), which every sub-level dashboard shares) -- no
+    other role needs process/resource health, and it's only meaningful
+    where the actual admin actions (user/access management) already live."""
+    return render_template(
+        "dashboard_index.html",
+        server_status=get_status(),
+        error_log=read_error_log(),
+        **_dashboard_context(),
+    )
 
 
 @dashboard.route("/dashboard/director")
@@ -228,3 +261,124 @@ def update_level(user_id):
 @admin_required
 def audit_log():
     return render_template("audit_log.html", entries=recent_entries())
+
+
+@dashboard.route("/dashboard/admin/terminal", methods=["POST"])
+@admin_required
+def run_terminal_command():
+    """Runs an arbitrary shell command on the server the app is running on
+    and returns its output.
+
+    FULL, UNRESTRICTED ACCESS BY DELIBERATE, EXPLICIT INSTRUCTION
+    (2026-09-12) -- gated only by the same admin_required as the rest of
+    /dashboard/admin (tier <= ADMIN_LEVEL, i.e. dev AND admin sub-levels:
+    director/senior-manager/manager too). Martin's own words: "give full
+    permission terminal, later we will fix permission to this page for
+    0.0" -- the intent is to restrict the whole /dashboard/admin page to
+    real lvl-0.0 only in a follow-up change, not yet done. Until that
+    lands, anyone who can reach /dashboard/admin has a real shell on
+    whichever machine is running this Flask process (raid-server in
+    production). Every command is written to the audit log regardless of
+    success/failure, so there's at least a record while this stays this
+    open.
+    """
+    command = (request.get_json(silent=True) or {}).get("command", "").strip()
+    if not command:
+        return jsonify(error="No command given."), 400
+
+    try:
+        result = subprocess.run(
+            command,
+            shell=True,
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        stdout, stderr, returncode = result.stdout, result.stderr, result.returncode
+    except subprocess.TimeoutExpired:
+        stdout, stderr, returncode = "", "Command timed out after 30s.", -1
+    except Exception as e:
+        stdout, stderr, returncode = "", f"Failed to run command: {e}", -1
+
+    log_action("dashboard", "run_terminal_command", f"ran `{command}` (exit {returncode})")
+    return jsonify(stdout=stdout, stderr=stderr, returncode=returncode)
+
+
+def _safe_resolve(rel_path):
+    """Resolve a browser-supplied relative path against PROJECT_ROOT,
+    refusing anything that escapes it (../.. tricks, absolute paths).
+    Returns None if the resolved target isn't actually under PROJECT_ROOT.
+
+    This boundary is a UX/sanity choice, not a real security boundary --
+    the Terminal above already grants an unrestricted shell in the same
+    admin-tier page, so anyone who could escape this would just use that
+    instead. It exists so File Explorer behaves like a normal file browser
+    (rooted somewhere sensible) rather than exposing the whole filesystem
+    by default."""
+    base = PROJECT_ROOT.resolve()
+    try:
+        target = (base / (rel_path or "")).resolve()
+    except (OSError, ValueError):
+        return None
+    if target != base and base not in target.parents:
+        return None
+    return target
+
+
+@dashboard.route("/dashboard/admin/files")
+@admin_required
+def browse_files():
+    """Directory listing under PROJECT_ROOT, JSON for the File Explorer's
+    own JS (static/js/file_explorer.js) to render -- not a full page."""
+    target = _safe_resolve(request.args.get("path", ""))
+    if target is None or not target.exists():
+        return jsonify(error="That path doesn't exist."), 400
+    if target.is_file():
+        return jsonify(error="That's a file, not a directory."), 400
+
+    entries = []
+    try:
+        children = sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
+    except OSError as e:
+        return jsonify(error=f"Couldn't list directory: {e}"), 400
+    for p in children:
+        try:
+            stat = p.stat()
+        except OSError:
+            continue
+        entries.append({
+            "name": p.name,
+            "is_dir": p.is_dir(),
+            "size": None if p.is_dir() else stat.st_size,
+            "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M"),
+        })
+
+    base = PROJECT_ROOT.resolve()
+    rel = target.relative_to(base)
+    rel_str = "" if str(rel) == "." else str(rel).replace("\\", "/")
+    parent = "" if rel_str == "" else "/".join(rel_str.split("/")[:-1])
+
+    return jsonify(
+        path=rel_str,
+        parent=None if rel_str == "" else parent,
+        entries=entries,
+    )
+
+
+@dashboard.route("/dashboard/admin/files/read")
+@admin_required
+def read_file():
+    """Read-only text preview of one file under PROJECT_ROOT. Anything
+    beyond viewing (editing, deleting, moving) is what the Terminal is
+    for -- no point duplicating that here."""
+    target = _safe_resolve(request.args.get("path", ""))
+    if target is None or not target.is_file():
+        return jsonify(error="That's not a file."), 400
+    try:
+        if target.stat().st_size > 300_000:
+            return jsonify(error="File is over 300KB — too large to preview here. Use the Terminal instead.")
+        content = target.read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        return jsonify(error=f"Couldn't read file: {e}"), 400
+    return jsonify(content=content)

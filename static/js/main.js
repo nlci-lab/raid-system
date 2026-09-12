@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupRowDetail();
     setupFormattingToolbars();
     setupDashboardNav();
+    setupDashboardTopTabs();
     setupGenreTabs();
     setupStickyToolbar();
     setupToasts();
@@ -224,6 +225,34 @@ function setupDashboardNav() {
             sections.forEach((section) => {
                 section.hidden = section.dataset.section !== btn.dataset.target;
             });
+        });
+    });
+}
+
+/* Admin Dashboard's top-level split: "raid-system" (the app itself --
+   Access Requests, Users, Guide, Audit Log) vs. "raid-server" (the
+   machine it runs on -- Server Status, Terminal, File Explorer). No-op
+   wherever the markup isn't present (every other dashboard page keeps
+   its single flat sidebar via setupDashboardNav() above, untouched).
+   Delegates actual section switching to that same function's click
+   handlers -- this only decides which group of sidebar buttons is
+   visible and clicks the first one in the newly-shown group. */
+function setupDashboardTopTabs() {
+    const tabs = document.querySelectorAll(".dashboard-top-tab");
+    if (!tabs.length) return;
+
+    const groups = document.querySelectorAll(".dashboard-nav-group");
+
+    tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+            tabs.forEach((t) => t.classList.toggle("active", t === tab));
+            groups.forEach((group) => {
+                group.hidden = group.dataset.navGroup !== tab.dataset.tab;
+            });
+            const firstButton = document.querySelector(
+                '.dashboard-nav-group[data-nav-group="' + tab.dataset.tab + '"] .dashboard-nav-item'
+            );
+            if (firstButton) firstButton.click();
         });
     });
 }

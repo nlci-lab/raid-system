@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — Server Error{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / Server Error{% endblock %}
+{% block content %}
+<div class="auth-card not-allowed-card">
+    <h1>Something went wrong</h1>
+    <p class="auth-hint">
+        An unexpected error occurred. It's been logged — if it keeps happening,
+        an admin can check the Server Status section on the
+        <a href="{{ url_for('dashboard.admin_dashboard') }}">Admin Dashboard</a>.
+    </p>
+</div>
+{% endblock %}

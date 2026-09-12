@@ -1,5 +1,7 @@
+import logging
 import sqlite3
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
@@ -19,11 +21,23 @@ from apps.guide import guide
 from apps.ildb import ildb
 from apps.levels import ANONYMOUS_LEVEL, SUB_LEVEL_LABELS, VIEWER_LEVEL, current_level, level_label, real_level, tier
 from apps.library import get_conn as _library_get_conn, library
+from apps.server_status import ERROR_LOG_PATH
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
 APP_VERSION = (Path(__file__).parent / "VERSION").read_text().strip()
+
+# Feeds the Server Status section on /dashboard/admin (apps/server_status
+# reads this same file back). WARNING+ only -- this is for "what broke",
+# not routine request logging (Flask's dev-server access log / gunicorn's
+# own log already cover that, separately, on stdout). Rotated so a busy
+# error spell can't grow this unboundedly.
+_error_file_handler = RotatingFileHandler(str(ERROR_LOG_PATH), maxBytes=1_000_000, backupCount=2, encoding="utf-8")
+_error_file_handler.setLevel(logging.WARNING)
+_error_file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+app.logger.addHandler(_error_file_handler)
+app.logger.setLevel(logging.WARNING)
 
 
 @app.context_processor
@@ -54,6 +68,16 @@ app.register_blueprint(guide)
 def forbidden(e):
     flash("You are not allowed to access this section.", "error")
     return render_template("403.html"), 403
+
+
+@app.errorhandler(500)
+def server_error(e):
+    # Flask already logs the underlying exception (with traceback) via
+    # app.logger before invoking this handler -- the RotatingFileHandler
+    # attached above catches that into logs/error.log for the admin
+    # dashboard's Server Status section. This just swaps Werkzeug's raw
+    # traceback page for one that matches the rest of the app.
+    return render_template("500.html"), 500
 
 
 PUBLIC_ENDPOINTS = {None, "static", "hello"}

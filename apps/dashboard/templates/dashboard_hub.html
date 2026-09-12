@@ -5,55 +5,15 @@
 <section class="portal-section">
     <h2 class="portal-section-title">All Dashboards</h2>
     <div class="tile-grid">
-        <a class="tile tile-dashboard" href="{{ url_for('dashboard.admin_dashboard') }}">
-            <span class="tile-icon">📊</span>
-            <span class="tile-title">Admin Dashboard</span>
-            <span class="tile-desc">Access requests, book requests, users, loans</span>
-        </a>
         <a class="tile tile-dashboard" href="{{ url_for('dashboard.director_dashboard') }}">
             <span class="tile-icon">📊</span>
             <span class="tile-title">Director Dashboard</span>
-            <span class="tile-desc">Same admin dashboard, director-labeled</span>
+            <span class="tile-desc">Indian language situation at a glance (ILDB)</span>
         </a>
         <a class="tile tile-dashboard" href="{{ url_for('dashboard.senior_manager_dashboard') }}">
             <span class="tile-icon">📊</span>
             <span class="tile-title">Senior Manager Dashboard</span>
-            <span class="tile-desc">Same admin dashboard, senior-manager-labeled</span>
-        </a>
-        <a class="tile tile-dashboard" href="{{ url_for('dashboard.manager_dashboard') }}">
-            <span class="tile-icon">📊</span>
-            <span class="tile-title">Manager Dashboard</span>
-            <span class="tile-desc">Same admin dashboard, manager-labeled</span>
-        </a>
-        <a class="tile tile-dashboard" href="{{ url_for('dashboard.developer_dashboard') }}">
-            <span class="tile-icon">📊</span>
-            <span class="tile-title">Developer Dashboard</span>
-            <span class="tile-desc">Same admin dashboard, developer-labeled</span>
-        </a>
-        <a class="tile tile-dashboard" href="{{ url_for('dashboard.technical_tester_dashboard') }}">
-            <span class="tile-icon">📊</span>
-            <span class="tile-title">Technical Tester Dashboard</span>
-            <span class="tile-desc">Same admin dashboard, technical-tester-labeled</span>
-        </a>
-        <a class="tile tile-dashboard" href="{{ url_for('dashboard.non_technical_tester_dashboard') }}">
-            <span class="tile-icon">📊</span>
-            <span class="tile-title">Non-Technical Tester Dashboard</span>
-            <span class="tile-desc">Same admin dashboard, non-technical-tester-labeled</span>
-        </a>
-        <a class="tile tile-dashboard" href="{{ url_for('dashboard.outside_developer_dashboard') }}">
-            <span class="tile-icon">📊</span>
-            <span class="tile-title">Outside Developer Dashboard</span>
-            <span class="tile-desc">Same admin dashboard, outside-developer-labeled</span>
-        </a>
-        <a class="tile tile-dashboard" href="{{ url_for('dashboard.outside_tester_dashboard') }}">
-            <span class="tile-icon">📊</span>
-            <span class="tile-title">Outside Tester Dashboard</span>
-            <span class="tile-desc">Same admin dashboard, outside-tester-labeled</span>
-        </a>
-        <a class="tile tile-audit-log" href="{{ url_for('dashboard.audit_log') }}">
-            <span class="tile-icon">🧾</span>
-            <span class="tile-title">Audit Log</span>
-            <span class="tile-desc">System-wide action history</span>
+            <span class="tile-desc">Indian language situation at a glance (ILDB)</span>
         </a>
         <a class="tile tile-raid-manager" href="{{ url_for('attendance.manager_dashboard') }}">
             <span class="tile-icon">🗓️</span>
@@ -65,10 +25,20 @@
             <span class="tile-title">RAID Librarian Dash</span>
             <span class="tile-desc">Catalog sync, pending requests, active loans</span>
         </a>
+        <a class="tile tile-dashboard" href="{{ url_for('dashboard.admin_dashboard') }}">
+            <span class="tile-icon">📊</span>
+            <span class="tile-title">Admin Dashboard</span>
+            <span class="tile-desc">Access requests, users, server ops</span>
+        </a>
         <a class="tile tile-raid-bot" href="{{ url_for('ai_chat.dashboard_page') }}">
             <span class="tile-icon">🤖</span>
             <span class="tile-title">RAID Bot Dash</span>
             <span class="tile-desc">Model, prompt, RAG index, on/off switch</span>
+        </a>
+        <a class="tile tile-audit-log" href="{{ url_for('dashboard.audit_log') }}">
+            <span class="tile-icon">🧾</span>
+            <span class="tile-title">Audit Log</span>
+            <span class="tile-desc">System-wide action history</span>
         </a>
     </div>
 </section>

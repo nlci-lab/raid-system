@@ -7,6 +7,8 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, s
 
 from apps.audit import log_action
 from apps.db import ATTENDANCE_DB, USERS_DB
+from apps.ildb import health_snapshot as ildb_health_snapshot
+from apps.library import usage_summary as library_usage_summary
 from apps.levels import MANAGER_LEVEL, current_level, tier
 
 attendance = Blueprint("attendance", __name__, template_folder="templates")
@@ -525,9 +527,26 @@ def manager_dashboard():
     ).fetchall()
     conn.close()
 
+    # Today's headline counts, for the summary bar -- same "glance-able
+    # totals before the raw table" pattern as ILDB's headline.
+    today_summary = {"present": 0, "wfh": 0, "leave": 0, "absent": 0, "unmarked": 0}
+    for row in today_status:
+        if row["status"] == "present":
+            today_summary["wfh" if row["work_location"] == "wfh" else "present"] += 1
+        elif row["status"] == "absent":
+            today_summary["absent"] += 1
+        elif row["status"] == "leave":
+            today_summary["leave"] += 1
+        else:
+            today_summary["unmarked"] += 1
+    pending_count = sum(1 for r in all_requests if (r["approval_status"] or "approved") == "pending")
+
     return render_template(
         "attendance_manager.html",
         all_requests=all_requests, today_status=today_status, today=today,
+        today_summary=today_summary, pending_count=pending_count,
+        ildb=ildb_health_snapshot(),
+        library=library_usage_summary(),
     )
 
 
@@ -546,7 +565,7 @@ def approve_request(record_id):
     conn.close()
     log_action("attendance", "approve_request", f"approved request #{record_id}")
     flash("Request approved.", "info")
-    return redirect(url_for("attendance.manager_dashboard"))
+    return redirect(url_for("attendance.manager_dashboard") + "#approvals")
 
 
 @attendance.route("/attendance/request/<int:record_id>/reject", methods=["POST"])
@@ -561,4 +580,4 @@ def reject_request(record_id):
     conn.close()
     log_action("attendance", "reject_request", f"rejected request #{record_id}")
     flash("Request rejected.", "info")
-    return redirect(url_for("attendance.manager_dashboard"))
+    return redirect(url_for("attendance.manager_dashboard") + "#approvals")

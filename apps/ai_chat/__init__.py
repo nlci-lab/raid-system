@@ -2,6 +2,7 @@ import json
 import sqlite3
 import urllib.request
 import urllib.error
+from datetime import datetime
 from functools import wraps
 from pathlib import Path
 
@@ -279,10 +280,24 @@ def send_message():
         return jsonify({"error": f"Internal error: {str(e)}"}), 500
 
 
+def _display_time(iso_str):
+    """Stored as full ISO; shown as a short 'Sep 12, 6:03 PM' -- same
+    convention as apps/chat's and apps/library's own _display_time."""
+    if not iso_str:
+        return iso_str
+    try:
+        dt = datetime.fromisoformat(iso_str)
+        return dt.strftime("%b %d, %I:%M %p").replace(" 0", " ")
+    except ValueError:
+        return iso_str
+
+
 @ai_chat.route("/dashboard/raid-bot-dash")
 @admin_required
 def dashboard_page():
     models, models_error = _list_ollama_models()
+    rag_status = rag.index_status()
+    rag_status["built_at"] = _display_time(rag_status["built_at"])
     return render_template(
         "raid_bot_dash.html",
         model_name=get_model_name(),
@@ -299,7 +314,7 @@ def dashboard_page():
         default_top_k=DEFAULT_TOP_K,
         default_repeat_penalty=DEFAULT_REPEAT_PENALTY,
         default_num_predict=DEFAULT_NUM_PREDICT,
-        rag_status=rag.index_status(),
+        rag_status=rag_status,
     )
 
 

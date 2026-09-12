@@ -2,40 +2,14 @@
 {% block title %}RAIDsystem — RAID Manager Dash{% endblock %}
 {% block breadcrumb %}<a href="/">Home</a> / <a href="{{ url_for('dashboard.index') }}">Dashboard</a> / RAID Manager Dash{% endblock %}
 {% block content %}
-<h2>Today's Team Status — {{ today }}</h2>
-<div class="table-wrap">
-    <table class="data-table">
-        <thead>
-        <tr>
-            <th>SlNo</th>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Detail</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in today_status %}
-        <tr>
-            <td>{{ loop.index }}</td>
-            <td>{{ row['user_name'] }}</td>
-            <td>
-                {% if row['status'] == 'present' %}
-                <span class="manager-status-pill manager-status-present">{{ 'WFH' if row['work_location'] == 'wfh' else 'Present' }}</span>
-                {% elif row['status'] == 'absent' %}
-                <span class="manager-status-pill manager-status-absent">LOP</span>
-                {% elif row['status'] == 'leave' %}
-                <span class="manager-status-pill manager-status-leave">Leave</span>
-                {% else %}
-                <span class="manager-status-pill manager-status-unmarked">Unmarked</span>
-                {% endif %}
-            </td>
-            <td>{{ row['leave_type'] or '' }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+<div class="dashboard-top-tabs" data-simple-tabs>
+    <button type="button" class="dashboard-top-tab active" data-tab="approvals">Approvals{% if pending_count %} ({{ pending_count }}){% endif %}</button>
+    <button type="button" class="dashboard-top-tab" data-tab="database">Database</button>
+    <button type="button" class="dashboard-top-tab" data-tab="attendance">Attendance</button>
+    <button type="button" class="dashboard-top-tab" data-tab="library">Library</button>
 </div>
 
+<div data-tab-pane="approvals">
 <h2>All Requests — Leave &amp; WFH</h2>
 <div class="table-wrap">
     <table class="data-table">
@@ -80,5 +54,211 @@
         {% endfor %}
         </tbody>
     </table>
+</div>
+</div>
+
+<div data-tab-pane="database" hidden>
+<h2>Indian Language Situation — at a glance</h2>
+
+<div class="ildb-headline">
+    <div class="ildb-headline-stat">
+        <span class="ildb-headline-num">{{ ildb.total_languages }}</span>
+        <span class="ildb-headline-label">languages tracked</span>
+    </div>
+    <div class="ildb-headline-stat">
+        <span class="ildb-headline-num" style="color:#22a06b">{{ ildb.safe_count }}</span>
+        <span class="ildb-headline-label">safe / vigorous</span>
+    </div>
+    <div class="ildb-headline-stat">
+        <span class="ildb-headline-num" style="color:#d9a02c">{{ ildb.endangered_count }}</span>
+        <span class="ildb-headline-label">endangered (threatened → dormant)</span>
+    </div>
+    <div class="ildb-headline-stat">
+        <span class="ildb-headline-num" style="color:#6b7280">{{ ildb.extinct_count }}</span>
+        <span class="ildb-headline-label">extinct</span>
+    </div>
+    {% if ildb.unclassified_count %}
+    <div class="ildb-headline-stat">
+        <span class="ildb-headline-num">{{ ildb.unclassified_count }}</span>
+        <span class="ildb-headline-label">no EGIDS rating yet</span>
+    </div>
+    {% endif %}
+</div>
+
+<div class="ildb-vitality-chart">
+    {% for band in ildb.vitality %}
+    <div class="ildb-vitality-row">
+        <span class="ildb-vitality-row-label">{{ band.label }}</span>
+        <span class="ildb-vitality-track">
+            <span class="ildb-vitality-fill" style="width: {{ band.pct }}%; background: {{ band.color }};"></span>
+        </span>
+        <span class="ildb-vitality-row-count">{{ band.count }} ({{ band.pct }}%)</span>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="ildb-breakdown-grid">
+    <div class="ildb-breakdown-card">
+        <h3>By language family</h3>
+        <ul class="ildb-breakdown-list">
+            {% for f in ildb.families %}
+            <li><span>{{ f.name }}</span><span class="ildb-breakdown-count">{{ f.count }}</span></li>
+            {% else %}
+            <li>No data yet.</li>
+            {% endfor %}
+        </ul>
+        {% if ildb.families_more %}<p class="ildb-breakdown-more">+{{ ildb.families_more }} more</p>{% endif %}
+    </div>
+    <div class="ildb-breakdown-card">
+        <h3>By strategic zone</h3>
+        <ul class="ildb-breakdown-list">
+            {% for z in ildb.zones %}
+            <li><span>{{ z.name }}</span><span class="ildb-breakdown-count">{{ z.count }}</span></li>
+            {% else %}
+            <li>No data yet.</li>
+            {% endfor %}
+        </ul>
+        {% if ildb.zones_more %}<p class="ildb-breakdown-more">+{{ ildb.zones_more }} more</p>{% endif %}
+    </div>
+    <div class="ildb-breakdown-card">
+        <h3>By script</h3>
+        <ul class="ildb-breakdown-list">
+            {% for s in ildb.scripts %}
+            <li><span>{{ s.name }}</span><span class="ildb-breakdown-count">{{ s.count }}</span></li>
+            {% else %}
+            <li>No data yet.</li>
+            {% endfor %}
+        </ul>
+        {% if ildb.scripts_more %}<p class="ildb-breakdown-more">+{{ ildb.scripts_more }} more</p>{% endif %}
+    </div>
+</div>
+<p class="ai-bot-dash-note">
+    Data completeness: {{ ildb.pct_iso_code }}% of languages have an ISO code,
+    {{ ildb.pct_egids }}% have an EGIDS rating · {{ ildb.alternate_name_count }} alternate names on record.
+    <a href="{{ url_for('ildb.index') }}">Browse raw ILDB tables →</a>
+</p>
+</div>
+
+<div data-tab-pane="attendance" hidden>
+<h2>Today's Team Status — {{ today }}</h2>
+
+<div class="attendance-headline">
+    <div class="attendance-headline-stat">
+        <span class="attendance-headline-num" style="color:#10b981">{{ today_summary.present }}</span>
+        <span class="attendance-headline-label">present</span>
+    </div>
+    <div class="attendance-headline-stat">
+        <span class="attendance-headline-num" style="color:#10b981">{{ today_summary.wfh }}</span>
+        <span class="attendance-headline-label">WFH</span>
+    </div>
+    <div class="attendance-headline-stat">
+        <span class="attendance-headline-num" style="color:#f59e0b">{{ today_summary.leave }}</span>
+        <span class="attendance-headline-label">on leave</span>
+    </div>
+    <div class="attendance-headline-stat">
+        <span class="attendance-headline-num" style="color:#dc2626">{{ today_summary.absent }}</span>
+        <span class="attendance-headline-label">absent (LOP)</span>
+    </div>
+    <div class="attendance-headline-stat">
+        <span class="attendance-headline-num" style="color:#6b7280">{{ today_summary.unmarked }}</span>
+        <span class="attendance-headline-label">unmarked</span>
+    </div>
+    {% if pending_count %}
+    <div class="attendance-headline-stat">
+        <span class="attendance-headline-num" style="color:#6b7280">{{ pending_count }}</span>
+        <span class="attendance-headline-label">pending approval{{ 's' if pending_count != 1 }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>Name</th>
+            <th>Status</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in today_status %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ row['user_name'] }}</td>
+            <td>
+                {% if row['status'] == 'present' %}
+                <span class="manager-status-pill manager-status-present">{{ 'WFH' if row['work_location'] == 'wfh' else 'Present' }}</span>
+                {% elif row['status'] == 'absent' %}
+                <span class="manager-status-pill manager-status-absent">LOP</span>
+                {% elif row['status'] == 'leave' %}
+                <span class="manager-status-pill manager-status-leave">Leave{{ ' · ' + row['leave_type'] if row['leave_type'] }}</span>
+                {% else %}
+                <span class="manager-status-pill manager-status-unmarked">Unmarked</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+</div>
+
+<div data-tab-pane="library" hidden>
+<h2>RAID Library — at a glance</h2>
+
+<div class="library-headline">
+    <div class="library-headline-stat">
+        <span class="library-headline-num">{{ library.total_books }}</span>
+        <span class="library-headline-label">books in catalog</span>
+    </div>
+    <div class="library-headline-stat">
+        <span class="library-headline-num" style="color:#10b981">{{ library.issued }}</span>
+        <span class="library-headline-label">currently issued</span>
+    </div>
+    <div class="library-headline-stat">
+        <span class="library-headline-num" style="color:#6b7280">{{ library.pending }}</span>
+        <span class="library-headline-label">pending requests</span>
+    </div>
+    <div class="library-headline-stat">
+        <span class="library-headline-num">{{ library.total_loans }}</span>
+        <span class="library-headline-label">total loans (all time)</span>
+    </div>
+    <div class="library-headline-stat">
+        <span class="library-headline-num" style="color:#10b981">{{ library.issued_this_month }}</span>
+        <span class="library-headline-label">issued this month</span>
+    </div>
+    <div class="library-headline-stat">
+        <span class="library-headline-num" style="color:#2f8fd1">{{ library.returned_this_month }}</span>
+        <span class="library-headline-label">returned this month</span>
+    </div>
+</div>
+
+<div class="ildb-breakdown-grid">
+    <div class="ildb-breakdown-card">
+        <h3>By genre</h3>
+        <ul class="ildb-breakdown-list">
+            {% for g in library.genres %}
+            <li><span>{{ g.name }}</span><span class="ildb-breakdown-count">{{ g.count }}</span></li>
+            {% else %}
+            <li>No data yet.</li>
+            {% endfor %}
+        </ul>
+        {% if library.genres_more %}<p class="ildb-breakdown-more">+{{ library.genres_more }} more</p>{% endif %}
+    </div>
+    <div class="ildb-breakdown-card">
+        <h3>By series</h3>
+        <ul class="ildb-breakdown-list">
+            {% for s in library.series %}
+            <li><span>{{ s.name }}</span><span class="ildb-breakdown-count">{{ s.count }}</span></li>
+            {% else %}
+            <li>No data yet.</li>
+            {% endfor %}
+        </ul>
+        {% if library.series_more %}<p class="ildb-breakdown-more">+{{ library.series_more }} more</p>{% endif %}
+    </div>
+</div>
+<p class="ai-bot-dash-note">
+    <a href="{{ url_for('library.admin_panel') }}">Go to RAID Librarian Dash →</a>
+</p>
 </div>
 {% endblock %}

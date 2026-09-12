@@ -2,59 +2,57 @@
 {% block title %}RAIDsystem — RAID Librarian Dash{% endblock %}
 {% block breadcrumb %}<a href="/">Home</a> / <a href="{{ url_for('dashboard.index') }}">Dashboard</a> / RAID Librarian Dash{% endblock %}
 {% block content %}
+<div class="dashboard-top-tabs" data-simple-tabs>
+    <button type="button" class="dashboard-top-tab active" data-tab="overview">Overview</button>
+    <button type="button" class="dashboard-top-tab" data-tab="approvals">Approvals{% if pending_requests %} ({{ pending_requests | length }}){% endif %}</button>
+</div>
+
+<div data-tab-pane="overview">
 <div class="admin-panel">
 
-<section class="portal-section">
-    <h2 class="portal-section-title">Catalog Source</h2>
+<div class="library-headline">
+    <div class="library-headline-stat">
+        <span class="library-headline-num">{{ library.total_books }}</span>
+        <span class="library-headline-label">books in catalog</span>
+    </div>
+    <div class="library-headline-stat">
+        <span class="library-headline-num" style="color:#10b981">{{ library.issued }}</span>
+        <span class="library-headline-label">currently issued</span>
+    </div>
+    <div class="library-headline-stat">
+        <span class="library-headline-num" style="color:#6b7280">{{ library.pending }}</span>
+        <span class="library-headline-label">pending requests</span>
+    </div>
+    <div class="library-headline-stat">
+        <span class="library-headline-num">{{ library.total_loans }}</span>
+        <span class="library-headline-label">total loans (all time)</span>
+    </div>
+    <div class="library-headline-stat">
+        <span class="library-headline-num" style="color:#10b981">{{ library.issued_this_month }}</span>
+        <span class="library-headline-label">issued this month</span>
+    </div>
+    <div class="library-headline-stat">
+        <span class="library-headline-num" style="color:#2f8fd1">{{ library.returned_this_month }}</span>
+        <span class="library-headline-label">returned this month</span>
+    </div>
+</div>
+
+<section class="admin-panel-source-card">
+    <div>
+        <span class="admin-panel-source-card-label">Catalog Source</span>
+        <p class="admin-panel-source-card-sub">
+            {% if last_sync %}
+            Last synced {{ last_sync.created_at }}{% if last_sync.actor_email %} by {{ last_sync.actor_email }}{% endif %}
+            {% else %}
+            Never synced yet.
+            {% endif %}
+        </p>
+    </div>
     <div class="admin-panel-actions">
         <form method="post" action="{{ url_for('library.sync_from_sheet') }}">
             <button type="submit" class="admin-panel-btn admin-panel-btn-primary" title="Sync catalog from Google Sheets">Sync from Sheets</button>
         </form>
         <a class="admin-panel-btn admin-panel-btn-outline" href="{{ sheet_url }}" target="_blank" rel="noopener" title="Open the source Google Sheet">Open Sheet</a>
-    </div>
-</section>
-
-<section class="portal-section">
-    <div class="portal-section-header">
-        <h2 class="portal-section-title">Pending Requests</h2>
-        <span class="genre-tab-count">{{ pending_requests | length }}</span>
-    </div>
-    <div class="table-wrap">
-        <table class="data-table" data-no-sort>
-            <thead>
-            <tr>
-                <th>SlNo</th>
-                <th>Book</th>
-                <th>Author</th>
-                <th>Requested By</th>
-                <th>Requested At</th>
-                <th>Action</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for req in pending_requests %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ req['title'] }}</td>
-                <td>{{ req['author'] }}</td>
-                <td>{{ req['requester_name'] }} <span class="portal-search-item-sub">{{ req['requester_email'] }}</span></td>
-                <td>{{ req['requested_at'] }}</td>
-                <td class="admin-panel-row-actions">
-                    <form method="post" action="{{ url_for('library.accept_request', loan_id=req['id']) }}">
-                        <button type="submit" class="admin-panel-btn admin-panel-btn-primary admin-panel-btn-sm">Accept</button>
-                    </form>
-                    <form method="post" action="{{ url_for('library.reject_request', loan_id=req['id']) }}">
-                        <button type="submit" class="admin-panel-btn admin-panel-btn-danger admin-panel-btn-sm">Reject</button>
-                    </form>
-                </td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="6">No pending requests right now.</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
     </div>
 </section>
 
@@ -92,8 +90,8 @@
                 </td>
             </tr>
             {% else %}
-            <tr>
-                <td colspan="7">No books currently on loan.</td>
+            <tr class="table-empty-row">
+                <td colspan="7">✓ No books currently on loan.</td>
             </tr>
             {% endfor %}
             </tbody>
@@ -101,5 +99,56 @@
     </div>
 </section>
 
+</div>
+</div>
+
+<div data-tab-pane="approvals" hidden>
+<div class="admin-panel">
+
+<section class="portal-section">
+    <div class="portal-section-header">
+        <h2 class="portal-section-title">Pending Requests</h2>
+        <span class="genre-tab-count">{{ pending_requests | length }}</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table" data-no-sort>
+            <thead>
+            <tr>
+                <th>SlNo</th>
+                <th>Book</th>
+                <th>Author</th>
+                <th>Requested By</th>
+                <th>Requested At</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for req in pending_requests %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ req['title'] }}</td>
+                <td>{{ req['author'] }}</td>
+                <td>{{ req['requester_name'] }} <span class="portal-search-item-sub">{{ req['requester_email'] }}</span></td>
+                <td>{{ req['requested_at'] }}</td>
+                <td class="admin-panel-row-actions">
+                    <form method="post" action="{{ url_for('library.accept_request', loan_id=req['id']) }}">
+                        <button type="submit" class="admin-panel-btn admin-panel-btn-primary admin-panel-btn-sm">Accept</button>
+                    </form>
+                    <form method="post" action="{{ url_for('library.reject_request', loan_id=req['id']) }}">
+                        <button type="submit" class="admin-panel-btn admin-panel-btn-danger admin-panel-btn-sm">Reject</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr class="table-empty-row">
+                <td colspan="6">✓ No pending requests right now.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+</div>
 </div>
 {% endblock %}

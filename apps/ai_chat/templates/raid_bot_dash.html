@@ -4,21 +4,36 @@
 {% block content %}
 <div class="admin-panel">
 
-<section class="portal-section">
-    <h2 class="portal-section-title">Status</h2>
-    <p>
-        RAID Bot is currently
-        <strong>{{ 'ON' if enabled else 'OFF' }}</strong>
-        for every user.
-        {% if models_error %}
-        <br>Ollama looks unreachable at <code>{{ ollama_api_url }}</code>: {{ models_error }}
-        {% else %}
-        <br>Ollama is reachable at <code>{{ ollama_api_url }}</code> — {{ available_models|length }} model(s) installed.
-        {% endif %}
-    </p>
-</section>
+<div class="aibot-headline">
+    <div class="aibot-headline-stat">
+        <span class="aibot-headline-num" style="color: {{ '#10b981' if enabled else '#dc2626' }}">{{ 'ON' if enabled else 'OFF' }}</span>
+        <span class="aibot-headline-label">status</span>
+    </div>
+    <div class="aibot-headline-stat">
+        <span class="aibot-headline-num">{{ model_name }}</span>
+        <span class="aibot-headline-label">active model</span>
+    </div>
+    <div class="aibot-headline-stat">
+        <span class="aibot-headline-num" style="color: {{ '#dc2626' if models_error else '#10b981' }}">{{ available_models|length }}</span>
+        <span class="aibot-headline-label">{{ 'Ollama unreachable' if models_error else 'models installed' }}</span>
+    </div>
+    <div class="aibot-headline-stat">
+        <span class="aibot-headline-num">{{ rag_status.total }}</span>
+        <span class="aibot-headline-label">RAG chunks indexed</span>
+    </div>
+    <div class="aibot-headline-stat">
+        <span class="aibot-headline-num" style="font-size: 1em">{{ rag_status.built_at or 'never' }}</span>
+        <span class="aibot-headline-label">RAG last built</span>
+    </div>
+</div>
 
-<section class="portal-section">
+{% if models_error %}
+<section class="dashboard-card-section" style="border-color:#dc2626">
+    <strong style="color:#dc2626">Ollama unreachable</strong> at <code>{{ ollama_api_url }}</code>: {{ models_error }}
+</section>
+{% endif %}
+
+<section class="portal-section dashboard-card-section">
     <h2 class="portal-section-title">Configuration</h2>
     <form method="post" action="{{ url_for('ai_chat.save_config') }}" class="ai-bot-dash-form">
         <label class="ai-bot-dash-toggle">
@@ -81,7 +96,7 @@
     </form>
 </section>
 
-<section class="portal-section">
+<section class="portal-section dashboard-card-section">
     <h2 class="portal-section-title">System Prompt</h2>
     <form method="post" action="{{ url_for('ai_chat.save_prompt') }}" class="ai-bot-dash-form">
         <textarea name="system_prompt" rows="20" class="ai-bot-dash-prompt">{{ system_prompt }}</textarea>
@@ -91,19 +106,27 @@
     </form>
 </section>
 
-<section class="portal-section">
+<section class="portal-section dashboard-card-section">
     <h2 class="portal-section-title">Knowledge Base (RAG)</h2>
     <p>
         RAID Bot searches this index for relevant content before answering, grounding replies in the
         real codebase, the internal Guide, blog posts, and the library catalog instead of only the
         system prompt above.
-        {% if rag_status.built_at %}
-        Last built <strong>{{ rag_status.built_at }}</strong> — <strong>{{ rag_status.total }}</strong> chunks
-        ({% for src, n in rag_status.counts.items() %}{{ src }}: {{ n }}{{ ", " if not loop.last else "" }}{% endfor %}).
-        {% else %}
-        Not built yet — RAID Bot will answer from the system prompt alone until you build it.
-        {% endif %}
     </p>
+
+    {% if rag_status.built_at %}
+    <div class="ildb-breakdown-card" style="max-width:320px">
+        <h3>Chunks by source</h3>
+        <ul class="ildb-breakdown-list">
+            {% for src, n in rag_status.counts.items() %}
+            <li><span>{{ src }}</span><span class="ildb-breakdown-count">{{ n }}</span></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% else %}
+    <p class="ai-bot-dash-note">Not built yet — RAID Bot will answer from the system prompt alone until you build it.</p>
+    {% endif %}
+
     <p class="ai-bot-dash-note">
         Note: the Guide is normally admin-only, but is included here — any RAID Bot user can surface
         Guide content through a question. Rebuilding re-embeds everything from scratch and can take a
@@ -116,10 +139,7 @@
     </form>
 </section>
 
-<section class="portal-section">
-    <h2 class="portal-section-title">Test It</h2>
-    <p>Use the RAID Bot bubble in the bottom-right corner of any page to try out a saved change right away.</p>
-</section>
+<p class="ai-bot-dash-note">Use the RAID Bot bubble in the bottom-right corner of any page to try out a saved change right away.</p>
 
 </div>
 {% endblock %}

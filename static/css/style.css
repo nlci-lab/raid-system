@@ -1990,6 +1990,41 @@ body.col-resizing {
     gap: 28px;
 }
 
+/* A calm, centered placeholder row for an empty table body -- "0 results"
+   read as a plain result, not a broken page. */
+.table-empty-row td {
+    text-align: center;
+    color: var(--muted);
+    padding: 28px 14px;
+}
+
+.admin-panel-source-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.admin-panel-source-card-label {
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+}
+
+.admin-panel-source-card-sub {
+    margin: 4px 0 0;
+    font-size: 0.85em;
+    color: var(--muted);
+}
+
 .admin-panel-actions {
     display: flex;
     gap: 10px;
@@ -3194,6 +3229,49 @@ body:has(main .chat-messages-area) main {
     }
 }
 
+/* RAID Bot Dash (/dashboard/raid-bot-dash) headline banner -- same
+   boxed-stat-card pattern as the other dashboards' headlines. */
+.aibot-headline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.aibot-headline-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.aibot-headline-num {
+    font-size: 1.4em;
+    font-weight: 700;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.aibot-headline-label {
+    font-size: 0.75em;
+    color: var(--muted);
+}
+
+/* Generic bordered card wrapper for a whole .portal-section -- .portal-
+   section itself has no box (just a title + bare content), which reads as
+   unstructured on pages with several stacked sections. Opt individual
+   sections into this rather than changing every .portal-section site-wide. */
+.dashboard-card-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
 /* RAID Bot Dash (/dashboard/raid-bot-dash) config forms */
 .ai-bot-dash-form {
     display: flex;
@@ -3283,6 +3361,137 @@ body:has(main .chat-messages-area) main {
     font-size: 0.75em;
     color: var(--muted);
     line-height: 1.3;
+}
+
+/* RAID Manager Dash > Attendance / Library headline banners, and Director
+   Dashboard > ILDB headline -- all the same "grid of individually boxed
+   stat cards" pattern (same look as .server-status-card), one class set
+   per page so each can restyle independently without touching the others. */
+.attendance-headline,
+.library-headline,
+.ildb-headline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.attendance-headline-stat,
+.library-headline-stat,
+.ildb-headline-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.attendance-headline-num,
+.library-headline-num,
+.ildb-headline-num {
+    font-size: 1.6em;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.attendance-headline-label,
+.library-headline-label,
+.ildb-headline-label {
+    font-size: 0.75em;
+    color: var(--muted);
+}
+
+/* Director Dashboard > ILDB vitality (EGIDS) bar chart */
+.ildb-vitality-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 22px;
+}
+
+.ildb-vitality-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 70px;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85em;
+}
+
+.ildb-vitality-row-label {
+    color: var(--text);
+}
+
+.ildb-vitality-track {
+    display: block;
+    height: 14px;
+    border-radius: 7px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.ildb-vitality-fill {
+    display: block;
+    height: 100%;
+    border-radius: 7px;
+    transition: width 0.3s ease;
+}
+
+.ildb-vitality-row-count {
+    text-align: right;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Director Dashboard > ILDB family/zone/script breakdown lists */
+.ildb-breakdown-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-bottom: 10px;
+}
+
+.ildb-breakdown-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+
+.ildb-breakdown-card h3 {
+    margin: 0 0 10px;
+    font-size: 0.85em;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.ildb-breakdown-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ildb-breakdown-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.85em;
+}
+
+.ildb-breakdown-list .ildb-breakdown-count {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.ildb-breakdown-more {
+    margin: 8px 0 0;
+    font-size: 0.78em;
+    color: var(--muted);
 }
 
 /* Admin Dashboard > Server Status */

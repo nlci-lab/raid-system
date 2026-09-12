@@ -9,6 +9,7 @@ from apps.access import SCHEMA as ACCESS_REQUESTS_SCHEMA
 from apps.audit import log_action, recent_entries
 from apps.config import PROJECT_ROOT
 from apps.db import LIBRARY_DB, USERS_DB
+from apps.ildb import health_snapshot as ildb_health_snapshot
 from apps.library import _ensure_books_table, _ensure_loans_table
 from apps.server_status import get_status, read_error_log
 from apps.levels import (
@@ -149,9 +150,13 @@ def index():
 @dashboard.route("/dashboard/admin")
 @admin_required
 def admin_dashboard():
-    """The actual admin dashboard content (Access Requests, Book Requests,
-    Users, Loans) -- what used to be the only thing at plain /dashboard.
-    Still reachable directly here; /dashboard itself is now the hub above.
+    """The actual admin dashboard content (Access Requests, Users, Server
+    Status, Terminal, File Explorer) -- what used to be the only thing at
+    plain /dashboard. Still reachable directly here; /dashboard itself is
+    now the hub above. Book Requests/Loans were deliberately removed --
+    that's the RAID Librarian Dash's job (library.admin_panel), not
+    system admin's; raid-system-admin owns access/users/server ops, not
+    library operations.
 
     Server Status + the error log are admin-page-specific (not part of
     _dashboard_context(), which every sub-level dashboard shares) -- no
@@ -168,49 +173,25 @@ def admin_dashboard():
 @dashboard.route("/dashboard/director")
 @admin_required
 def director_dashboard():
-    return render_template("dashboard_director.html", **_dashboard_context())
+    """NLCI Director's view -- deliberately mission-output only (ILDB's
+    Indian-language-situation rollup), not RAID's internal ops. Attendance,
+    library throughput, audit log, and RAID Bot usage were considered and
+    dropped (2026-09-12): those are RAID-internal, not director-relevant.
+    A survey-stage tracker and a G:\\ Drive report-archive metric were also
+    considered as future mission-output candidates -- neither exists as
+    queryable data anywhere yet, so neither is built. ILDB alone is the
+    finished scope for now."""
+    return render_template("dashboard_director.html", ildb=ildb_health_snapshot())
 
 
 @dashboard.route("/dashboard/senior-manager")
 @admin_required
 def senior_manager_dashboard():
-    return render_template("dashboard_senior_manager.html", **_dashboard_context())
+    """Same content as Director Dashboard (ILDB language-situation rollup) --
+    copied over 2026-09-12 rather than sharing director_dashboard()'s route
+    directly, so it can diverge later without touching Director's."""
+    return render_template("dashboard_senior_manager.html", ildb=ildb_health_snapshot())
 
-
-@dashboard.route("/dashboard/manager")
-@admin_required
-def manager_dashboard():
-    return render_template("dashboard_manager.html", **_dashboard_context())
-
-
-@dashboard.route("/dashboard/developer")
-@admin_required
-def developer_dashboard():
-    return render_template("dashboard_developer.html", **_dashboard_context())
-
-
-@dashboard.route("/dashboard/technical-tester")
-@admin_required
-def technical_tester_dashboard():
-    return render_template("dashboard_technical_tester.html", **_dashboard_context())
-
-
-@dashboard.route("/dashboard/non-technical-tester")
-@admin_required
-def non_technical_tester_dashboard():
-    return render_template("dashboard_non_technical_tester.html", **_dashboard_context())
-
-
-@dashboard.route("/dashboard/outside-developer")
-@admin_required
-def outside_developer_dashboard():
-    return render_template("dashboard_outside_developer.html", **_dashboard_context())
-
-
-@dashboard.route("/dashboard/outside-tester")
-@admin_required
-def outside_tester_dashboard():
-    return render_template("dashboard_outside_tester.html", **_dashboard_context())
 
 
 @dashboard.route("/dashboard/users/add", methods=["POST"])

@@ -50,19 +50,19 @@ SUB_LEVEL_LABELS = {
 }
 
 # Sub-levels that get routed to their own dedicated dashboard instead of the
-# shared one — value is the Flask endpoint name. Currently content-identical
-# to the shared dashboard; each is its own template/route so it can diverge
-# later without touching the others. A level not listed here (including
-# plain 1.0 or 0.0) just uses the shared dashboard.index.
+# shared one — value is the Flask endpoint name. A level not listed here
+# (including plain 1.0 or 0.0) just uses the shared dashboard.index.
+# 0.1-0.5 (developer/technical-tester/non-technical-tester/outside-developer/
+# outside-tester) had stub dashboards, all removed 2026-09-12 -- those roles
+# don't need a dashboard in raid-system at all, so they fall through to the
+# shared hub like plain dev/admin does.
 SUB_LEVEL_DASHBOARD_ENDPOINTS = {
-    0.1: "dashboard.developer_dashboard",
-    0.2: "dashboard.technical_tester_dashboard",
-    0.3: "dashboard.non_technical_tester_dashboard",
-    0.4: "dashboard.outside_developer_dashboard",
-    0.5: "dashboard.outside_tester_dashboard",
     1.1: "dashboard.director_dashboard",
     1.2: "dashboard.senior_manager_dashboard",
-    1.3: "dashboard.manager_dashboard",
+    # 1.3 (manager) has no dashboard of its own -- that's RAID Manager Dash
+    # (attendance.manager_dashboard), the real thing, not a stub clone of
+    # the admin layout. Removed 2026-09-12.
+    1.3: "attendance.manager_dashboard",
 }
 
 

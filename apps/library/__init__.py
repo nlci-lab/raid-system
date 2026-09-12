@@ -231,6 +231,66 @@ def _all_active_loans(conn):
     ).fetchall()
 
 
+def usage_summary():
+    """RAID Library at a glance -- catalog size, loan-lifecycle counts, and
+    genre/series breakdowns. For a dashboard rollup (RAID Manager Dash's
+    Library tab), not the admin panel's row-level request/loan queues
+    (_all_pending_requests / _all_active_loans above). Read-only; tolerates
+    an empty catalog or zero loans."""
+    conn = get_conn()
+    try:
+        total_books = conn.execute("SELECT COUNT(*) FROM books").fetchone()[0]
+
+        def loan_count(status):
+            return conn.execute("SELECT COUNT(*) FROM loans WHERE status = ?", (status,)).fetchone()[0]
+
+        issued = loan_count("issued")
+        pending = loan_count("pending")
+        returned = loan_count("returned")
+        rejected = loan_count("rejected")
+        total_loans = issued + pending + returned + rejected
+
+        this_month = datetime.now().strftime("%Y-%m")
+        issued_this_month = conn.execute(
+            "SELECT COUNT(*) FROM loans WHERE taken_at IS NOT NULL AND strftime('%Y-%m', taken_at) = ?",
+            (this_month,),
+        ).fetchone()[0]
+        returned_this_month = conn.execute(
+            "SELECT COUNT(*) FROM loans WHERE returned_at IS NOT NULL AND strftime('%Y-%m', returned_at) = ?",
+            (this_month,),
+        ).fetchone()[0]
+
+        TOP_N = 8
+
+        def top_n(col, table="books"):
+            rows = conn.execute(
+                f"SELECT {col} AS k, COUNT(*) AS n FROM {table} "
+                f"WHERE {col} IS NOT NULL AND TRIM({col}) != '' "
+                f"GROUP BY {col} ORDER BY n DESC"
+            ).fetchall()
+            items = [{"name": r["k"], "count": r["n"]} for r in rows]
+            return items[:TOP_N], max(0, len(items) - TOP_N)
+
+        genres, genres_more = top_n("genre")
+        series, series_more = top_n("series")
+
+        return {
+            "total_books": total_books,
+            "issued": issued,
+            "pending": pending,
+            "returned": returned,
+            "total_loans": total_loans,
+            "issued_this_month": issued_this_month,
+            "returned_this_month": returned_this_month,
+            "genres": genres,
+            "genres_more": genres_more,
+            "series": series,
+            "series_more": series_more,
+        }
+    finally:
+        conn.close()
+
+
 def _book_availability(conn, book_id):
     """Derive current availability status for a book.
     Returns 'Taken' if an open issued loan exists (status='issued', returned_at IS NULL),
@@ -335,6 +395,19 @@ def request_book(book_id):
     return redirect(request.referrer or url_for("library.index"))
 
 
+def _back_to_approvals_tab():
+    """Where accept/reject should redirect to. request.referrer (not the
+    request URL, which is only ever the POST target) is browser-sent and
+    never includes a #fragment per spec, so a plain referrer redirect back
+    to the Librarian Dash would silently drop the visitor onto its default
+    Overview tab instead of back onto Approvals. Append the fragment
+    ourselves whenever the referrer was this page."""
+    dest = request.referrer or url_for("dashboard.index")
+    if url_for("library.admin_panel") in dest:
+        dest = dest.split("#")[0] + "#approvals"
+    return dest
+
+
 @library.route("/library/requests/<int:loan_id>/accept", methods=["POST"])
 @admin_required
 def accept_request(loan_id):
@@ -357,7 +430,7 @@ def accept_request(loan_id):
     conn.close()
     log_action("library", "accept_request", f"request #{loan_id} (book #{loan['book_id']}) issued to user #{loan['requested_by']}")
     flash("Request accepted — book marked as issued.", "info")
-    return redirect(request.referrer or url_for("dashboard.index"))
+    return redirect(_back_to_approvals_tab())
 
 
 @library.route("/library/requests/<int:loan_id>/reject", methods=["POST"])
@@ -380,7 +453,7 @@ def reject_request(loan_id):
     conn.close()
     log_action("library", "reject_request", f"request #{loan_id}")
     flash("Request rejected.", "info")
-    return redirect(request.referrer or url_for("dashboard.index"))
+    return redirect(_back_to_approvals_tab())
 
 
 @library.route("/library/loans/<int:loan_id>/return", methods=["POST"])
@@ -430,6 +503,52 @@ def sync_from_sheet():
     return redirect(request.referrer or url_for("library.index"))
 
 
+def _display_time(iso_str):
+    """Stored as full ISO (for correct sorting/comparison); shown as a
+    short 'Sep 11, 9:46 PM' -- same convention as apps/chat's own
+    _display_time, reused here rather than reinvented."""
+    try:
+        dt = datetime.fromisoformat(iso_str)
+        return dt.strftime("%b %d, %I:%M %p").replace(" 0", " ")
+    except (ValueError, TypeError):
+        return iso_str
+
+
+def _last_sync_info():
+    """Most recent successful "Sync from Sheets" run, for the Catalog
+    Source card -- read from the shared audit_log (every sync_from_sheet
+    call already logs there; failed attempts are excluded so this reflects
+    the catalog's actual last-known-good state, not just the last click)."""
+    conn = sqlite3.connect(USERS_DB)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                actor_email TEXT NOT NULL,
+                actor_role TEXT,
+                module TEXT NOT NULL,
+                action TEXT NOT NULL,
+                details TEXT,
+                ip_address TEXT,
+                created_at TEXT NOT NULL
+            );
+        """)
+        row = conn.execute(
+            """SELECT actor_email, details, created_at FROM audit_log
+               WHERE module = 'library' AND action = 'sync_from_sheet'
+                 AND (details IS NULL OR details NOT LIKE 'failed:%')
+               ORDER BY id DESC LIMIT 1"""
+        ).fetchone()
+        if not row:
+            return None
+        info = dict(row)
+        info["created_at"] = _display_time(info["created_at"])
+        return info
+    finally:
+        conn.close()
+
+
 @library.route("/dashboard/raid-librarian-dash")
 @admin_required
 def admin_panel():
@@ -447,6 +566,8 @@ def admin_panel():
     return render_template(
         "library_admin.html",
         sheet_url="https://docs.google.com/spreadsheets/d/1es8Oj4tlmGVTsbC7RcXhTZZ6h5vm-5F22X1I0BmItq4/edit?gid=1154456721#gid=1154456721",
+        library=usage_summary(),
+        last_sync=_last_sync_info(),
         pending_requests=pending_requests,
         active_loans=active_loans,
     )

@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupFormattingToolbars();
     setupDashboardNav();
     setupDashboardTopTabs();
+    setupSimpleTabs();
     setupGenreTabs();
     setupStickyToolbar();
     setupToasts();
@@ -226,6 +227,34 @@ function setupDashboardNav() {
                 section.hidden = section.dataset.section !== btn.dataset.target;
             });
         });
+    });
+}
+
+/* Generic top-tab switcher for a plain page with no sidebar (e.g. RAID
+   Manager Dash's Attendance/Database split) -- pairs a
+   [data-simple-tabs] button bar (buttons carry data-tab="key") with
+   sibling [data-tab-pane="key"] panes. Independent of
+   setupDashboardTopTabs() below, which is coupled to the sidebar/
+   nav-group structure Admin Dashboard uses instead. */
+function setupSimpleTabs() {
+    document.querySelectorAll("[data-simple-tabs]").forEach((bar) => {
+        const tabs = bar.querySelectorAll(".dashboard-top-tab");
+        const panes = document.querySelectorAll("[data-tab-pane]");
+        const activate = (key) => {
+            tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === key));
+            panes.forEach((pane) => {
+                pane.hidden = pane.dataset.tabPane !== key;
+            });
+        };
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", () => activate(tab.dataset.tab));
+        });
+        // Preserve the active tab across a redirect (e.g. after an
+        // Approve/Reject form post) via a #hash matching a data-tab value.
+        const wanted = window.location.hash.replace("#", "");
+        if (wanted && bar.querySelector('.dashboard-top-tab[data-tab="' + wanted + '"]')) {
+            activate(wanted);
+        }
     });
 }
 

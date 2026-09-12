@@ -30,7 +30,7 @@ LEVEL_NAMES = {
     1.0: "admin",
     2.0: "data_manager",
     3.0: "raid_staff",
-    4.0: "viewer",
+    4.0: "nlci-staff",
     5.0: "external",
 }
 
@@ -119,7 +119,9 @@ MANAGER_LEVEL = 3.0    # manager actions (attendance marking, blog creation, lib
                        # accept/reject/return, access-request resolution) and
                        # attendance *visibility* — dev/admin/data_manager/raid_staff
 VIEWER_LEVEL = 4.0     # profile page, languages, library browsing/requests —
-                       # everyone logged in except external (lvl-5)
+                       # everyone logged in except external (lvl-5); this tier
+                       # is named "nlci-staff" — general NLCI staff, distinct
+                       # from lvl-3 "raid_staff" (RAID department specifically)
 
 # lvl-6 "anonymous" (not logged in) has no DB row — it's whoever
 # app.py's require_login lets through via PUBLIC_ENDPOINTS. Currently only

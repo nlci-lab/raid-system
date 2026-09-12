@@ -430,13 +430,16 @@ def sync_from_sheet():
     return redirect(request.referrer or url_for("library.index"))
 
 
-@library.route("/library/admin")
+@library.route("/dashboard/raid-librarian-dash")
 @admin_required
 def admin_panel():
     """Dedicated library admin panel — consolidates the sheet-sync/source
     actions (moved here from the catalog toolbar) plus admin queues for
     pending requests and active loans, pulled from across all users
-    (distinct from the per-user My Requests/My Loans tabs on /library)."""
+    (distinct from the per-user My Requests/My Loans tabs on /library).
+
+    Lives under /dashboard (not /library) alongside the other RAID-specific
+    manager dashboards (see apps/attendance's raid-manager-dash)."""
     conn = get_conn()
     pending_requests = _all_pending_requests(conn)
     active_loans = _all_active_loans(conn)

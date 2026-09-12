@@ -24,6 +24,14 @@
             <span class="dashboard-nav-label">Loans</span>
             <span class="dashboard-nav-count">{{ loans|length }}</span>
         </button>
+        <a class="dashboard-nav-item" href="{{ url_for('attendance.manager_dashboard') }}">
+            <span class="dashboard-nav-icon">🗓️</span>
+            <span class="dashboard-nav-label">RAID Manager Dash</span>
+        </a>
+        <a class="dashboard-nav-item" href="{{ url_for('library.admin_panel') }}">
+            <span class="dashboard-nav-icon">📚</span>
+            <span class="dashboard-nav-label">RAID Librarian Dash</span>
+        </a>
         {% if is_admin %}
         <a class="dashboard-nav-item" href="{{ url_for('dashboard.audit_log') }}">
             <span class="dashboard-nav-icon">🧾</span>

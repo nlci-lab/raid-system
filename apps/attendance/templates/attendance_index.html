@@ -1,41 +1,294 @@
 {% extends "base.html" %}
 {% block title %}RAIDsystem — Mark Attendance{% endblock %}
-{% block breadcrumb %}<a href="/">Home</a> / <a href="/attendance/history">Attendance</a> / Mark{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / Attendance / Mark{% if nav_current_level is defined and nav_current_level <= 1.3 %} / <a href="{{ url_for('attendance.manager_dashboard') }}">RAID Manager Dash</a>{% endif %}{% endblock %}
 {% block content %}
-<h2>Mark Attendance</h2>
-<form class="date-picker-form" method="get" action="{{ url_for('attendance.index') }}">
-    <label for="date">Date</label>
-    <input type="date" id="date" name="date" value="{{ day }}" onchange="this.form.submit()">
-</form>
-<form method="post" action="{{ url_for('attendance.mark') }}">
-    <input type="hidden" name="date" value="{{ day }}">
-    <div class="table-wrap">
-        <table class="data-table">
-            <thead>
-            <tr>
-                <th>SlNo</th>
-                <th>Name</th>
-                <th>Status</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for user in users %}
-            <tr>
-                <td>{{ loop.index }}</td>
-                <td>{{ user['name'] }}</td>
-                <td>
-                    <select name="status_{{ user['id'] }}">
-                        <option value="">—</option>
-                        {% for status in statuses %}
-                        <option value="{{ status }}" {% if marked.get(user['id']) == status %}selected{% endif %}>{{ status|capitalize }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+{% if my_balance %}
+<div class="attendance-page-header">
+    <button type="button" class="admin-panel-btn admin-panel-btn-outline admin-panel-btn-sm" onclick="openRequestWfhModal()">Request WFH</button>
+    <button type="button" class="admin-panel-btn admin-panel-btn-primary admin-panel-btn-sm" onclick="openRequestLeaveModal()">Request Leave</button>
+</div>
+<div class="leave-balance-box">
+    <p class="leave-balance-box-title">Your Leave Balance — {{ my_balance.year }}</p>
+    <div class="leave-balance-box-grid">
+        {% for lt in leave_types %}
+        <div class="leave-balance-tile">
+            <div class="leave-balance-tile-label">{{ lt }}</div>
+            <div class="leave-balance-tile-remaining">{{ my_balance[lt]['remaining'] }}</div>
+            <div class="leave-balance-tile-detail">{{ my_balance[lt]['used'] }} used of {{ my_balance[lt]['eligible'] }}</div>
+            <div class="leave-balance-tile-bar">
+                <div class="leave-balance-tile-bar-fill" style="width: {{ (my_balance[lt]['used'] / my_balance[lt]['eligible'] * 100) if my_balance[lt]['eligible'] else 0 }}%;"></div>
+            </div>
+        </div>
+        {% endfor %}
+        <div class="leave-balance-tile leave-balance-tile-lop">
+            <div class="leave-balance-tile-label">LOP</div>
+            <div class="leave-balance-tile-remaining">{{ my_balance['LOP']['month'] }}</div>
+            <div class="leave-balance-tile-detail">days this month</div>
+            <div class="leave-balance-tile-detail leave-balance-tile-detail-year"><span class="leave-balance-tile-year-num">{{ my_balance['LOP']['year'] }}</span> this year</div>
+        </div>
+        <div class="leave-balance-tile leave-balance-tile-late">
+            <div class="leave-balance-tile-label">Late Coming</div>
+            <div class="leave-balance-tile-remaining">{{ my_balance['LATE']['month'] }}</div>
+            <div class="leave-balance-tile-detail">days this month</div>
+            <div class="leave-balance-tile-detail leave-balance-tile-detail-year"><span class="leave-balance-tile-year-num">{{ my_balance['LATE']['year'] }}</span> this year</div>
+        </div>
+        <div class="leave-balance-tile leave-balance-tile-early">
+            <div class="leave-balance-tile-label">Early Leaving</div>
+            <div class="leave-balance-tile-remaining">{{ my_balance['EARLY']['month'] }}</div>
+            <div class="leave-balance-tile-detail">days this month</div>
+            <div class="leave-balance-tile-detail leave-balance-tile-detail-year"><span class="leave-balance-tile-year-num">{{ my_balance['EARLY']['year'] }}</span> this year</div>
+        </div>
+        <div class="leave-balance-tile leave-balance-tile-worked">
+            <div class="leave-balance-tile-label">Total Worked</div>
+            <div class="leave-balance-tile-remaining leave-balance-tile-remaining-sm">{{ my_balance['WORKED']['hours'] }}h {{ my_balance['WORKED']['minutes'] }}m {{ my_balance['WORKED']['seconds'] }}s</div>
+            <div class="leave-balance-tile-detail">this year</div>
+        </div>
     </div>
-    <button type="submit">Save attendance</button>
-</form>
+</div>
+{% endif %}
+
+{#
+Everyone's-attendance marking table removed 2026-09-12 per Boss's direct
+instruction ("don't show everyone's attendance" on this page) — the
+mark()/users/statuses/leave_types data is still passed by the view and
+GET ?date= still works, so this can be rebuilt here (own-row-only, or
+moved to an admin-only view) without touching apps/attendance/__init__.py.
+#}
+
+{% if calendar_weeks %}
+<h2>Your Attendance Calendar</h2>
+<div class="attendance-calendar">
+    <div class="attendance-calendar-header">
+        <a class="attendance-calendar-nav" href="{{ url_for('attendance.index', month=cal_prev) }}">&larr;</a>
+        <span class="attendance-calendar-title">{{ cal_month_label }}</span>
+        <a class="attendance-calendar-nav" href="{{ url_for('attendance.index', month=cal_next) }}">&rarr;</a>
+    </div>
+    <div class="attendance-calendar-grid attendance-calendar-weekdays">
+        <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+    </div>
+    {% for week in calendar_weeks %}
+    <div class="attendance-calendar-grid">
+        {% for cell in week %}
+        {% if cell is none %}
+        <div class="attendance-calendar-cell attendance-calendar-cell-empty"></div>
+        {% else %}
+        <div class="attendance-calendar-cell attendance-calendar-cell-{{ cell.status or 'unmarked' }}{{ ' attendance-calendar-cell-today' if cell.is_today else '' }}{{ ' attendance-calendar-cell-future' if cell.is_future else '' }}{{ ' attendance-calendar-cell-weekend' if cell.is_weekend else ' attendance-calendar-cell-workday' }}"
+             {% if not cell.is_future and not cell.is_weekend %}
+             role="button" tabindex="0"
+             data-date="{{ cell.date }}" data-day="{{ cell.day }}"
+             data-status="{{ cell.status or '' }}" data-leave-type="{{ cell.leave_type or '' }}"
+             data-entry-time="{{ cell.entry_time or '' }}" data-exit-time="{{ cell.exit_time or '' }}"
+             data-work-location="{{ cell.work_location or '' }}" data-reason="{{ cell.reason or '' }}"
+             onclick="openMarkModal(this)" onkeydown="if(event.key==='Enter') openMarkModal(this)"
+             {% elif cell.is_weekend %}
+             title="Can't mark attendance on a weekend"
+             {% else %}
+             title="Can't mark attendance for a future date"
+             {% endif %}>
+            {% if cell.is_today %}<span class="attendance-calendar-today-badge">Today</span>{% endif %}
+            <span class="attendance-calendar-daynum">{{ cell.day }}</span>
+            {% if cell.is_today and cell.status == 'present' and cell.entry_time and not cell.exit_time %}
+            <span class="attendance-calendar-tag attendance-calendar-tag-working">● Working{{ ' (WFH)' if cell.work_location == 'wfh' else '' }}</span>
+            {% elif cell.status == 'leave' %}
+            <span class="attendance-calendar-tag{{ ' attendance-calendar-tag-pending' if cell.approval_status == 'pending' else ' attendance-calendar-tag-rejected' if cell.approval_status == 'rejected' else '' }}">
+                {{ cell.leave_type or 'Leave' }}{{ ' (Pending)' if cell.approval_status == 'pending' else ' (Rejected)' if cell.approval_status == 'rejected' else '' }}
+            </span>
+            {% elif cell.status == 'absent' %}
+            <span class="attendance-calendar-tag">LOP</span>
+            {% elif cell.status == 'present' %}
+            <span class="attendance-calendar-tag{{ ' attendance-calendar-tag-wfh' if cell.work_location == 'wfh' else '' }}{{ ' attendance-calendar-tag-pending' if cell.work_location == 'wfh' and cell.approval_status == 'pending' else ' attendance-calendar-tag-rejected' if cell.work_location == 'wfh' and cell.approval_status == 'rejected' else '' }}">
+                {{ 'WFH' if cell.work_location == 'wfh' else 'Present' }}{{ ' (Pending)' if cell.work_location == 'wfh' and cell.approval_status == 'pending' else ' (Rejected)' if cell.work_location == 'wfh' and cell.approval_status == 'rejected' else '' }}
+            </span>
+            {% elif cell.status %}
+            <span class="attendance-calendar-tag">{{ cell.status|capitalize }}</span>
+            {% endif %}
+            {% if cell.entry_time %}
+            <span class="attendance-calendar-times">{{ cell.entry_time }}–{{ cell.exit_time or '…' }}</span>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endfor %}
+    <div class="attendance-calendar-legend">
+        <span><i class="attendance-calendar-swatch attendance-calendar-cell-present"></i> Present</span>
+        <span><i class="attendance-calendar-swatch attendance-calendar-cell-absent"></i> Absent (LOP)</span>
+        <span><i class="attendance-calendar-swatch attendance-calendar-cell-leave"></i> Leave</span>
+        <span><i class="attendance-calendar-swatch attendance-calendar-cell-unmarked"></i> Unmarked</span>
+    </div>
+</div>
+
+<div class="attendance-mark-modal-backdrop" id="markModalBackdrop" onclick="if(event.target===this) closeMarkModal()" hidden>
+    <div class="attendance-mark-modal">
+        <h3 id="markModalTitle">Mark attendance</h3>
+        <form method="post" action="{{ url_for('attendance.mark_self') }}">
+            <input type="hidden" name="date" id="markModalDate">
+            <input type="hidden" name="month" value="{{ cal_month_param }}">
+            <div class="attendance-mark-modal-field">
+                <label for="markModalStatus">Status</label>
+                <select name="status" id="markModalStatus" onchange="onMarkModalStatusChange(this.value)">
+                    <option value="">— Unmarked —</option>
+                    {% for status in statuses %}
+                    <option value="{{ status }}">{{ status|capitalize }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="attendance-mark-modal-field" id="markModalLeaveTypeField" hidden>
+                <label for="markModalLeaveType">Leave Type</label>
+                <select name="leave_type" id="markModalLeaveType">
+                    <option value="">—</option>
+                    {% for lt in leave_types %}
+                    <option value="{{ lt }}">{{ lt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="attendance-mark-modal-field" id="markModalReasonField" hidden>
+                <label for="markModalReason">Reason</label>
+                <textarea name="reason" id="markModalReason" rows="2"></textarea>
+            </div>
+            <div class="attendance-mark-modal-field" id="markModalWorkLocationField" hidden>
+                <label for="markModalWorkLocation">Work Location</label>
+                <select name="work_location" id="markModalWorkLocation">
+                    <option value="office">In-Office</option>
+                    <option value="wfh">WFH</option>
+                </select>
+            </div>
+            <div class="attendance-mark-modal-field" id="markModalEntryTimeField" hidden>
+                <label for="markModalEntryTime">Entry Time</label>
+                <input type="time" name="entry_time" id="markModalEntryTime">
+            </div>
+            <div class="attendance-mark-modal-field" id="markModalExitTimeField" hidden>
+                <label for="markModalExitTime">Exit Time</label>
+                <input type="time" name="exit_time" id="markModalExitTime">
+            </div>
+            <div class="attendance-mark-modal-actions">
+                <button type="button" class="admin-panel-btn admin-panel-btn-outline" onclick="closeMarkModal()">Cancel</button>
+                <button type="submit" class="admin-panel-btn admin-panel-btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="attendance-mark-modal-backdrop" id="requestLeaveModalBackdrop" onclick="if(event.target===this) closeRequestLeaveModal()" hidden>
+    <div class="attendance-mark-modal">
+        <h3>Request Leave</h3>
+        <form method="post" action="{{ url_for('attendance.mark_self') }}">
+            <input type="hidden" name="status" value="leave">
+            <input type="hidden" name="month" value="{{ cal_month_param }}">
+            <div class="attendance-mark-modal-field">
+                <label for="requestLeaveDate">Date</label>
+                <input type="date" name="date" id="requestLeaveDate" min="{{ today_iso }}" required>
+            </div>
+            <div class="attendance-mark-modal-field">
+                <label for="requestLeaveType">Leave Type</label>
+                <select name="leave_type" id="requestLeaveType" required>
+                    {% for lt in leave_types %}
+                    <option value="{{ lt }}">{{ lt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="attendance-mark-modal-field">
+                <label for="requestLeaveReason">Reason</label>
+                <textarea name="reason" id="requestLeaveReason" rows="2"></textarea>
+            </div>
+            <div class="attendance-mark-modal-actions">
+                <button type="button" class="admin-panel-btn admin-panel-btn-outline" onclick="closeRequestLeaveModal()">Cancel</button>
+                <button type="submit" class="admin-panel-btn admin-panel-btn-primary">Submit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="attendance-mark-modal-backdrop" id="requestWfhModalBackdrop" onclick="if(event.target===this) closeRequestWfhModal()" hidden>
+    <div class="attendance-mark-modal">
+        <h3>Request WFH</h3>
+        <form method="post" action="{{ url_for('attendance.mark_self') }}">
+            <input type="hidden" name="status" value="present">
+            <input type="hidden" name="work_location" value="wfh">
+            <input type="hidden" name="month" value="{{ cal_month_param }}">
+            <div class="attendance-mark-modal-field">
+                <label for="requestWfhDate">Date</label>
+                <input type="date" name="date" id="requestWfhDate" min="{{ today_iso }}" required>
+            </div>
+            <div class="attendance-mark-modal-field">
+                <label for="requestWfhReason">Reason</label>
+                <textarea name="reason" id="requestWfhReason" rows="2"></textarea>
+            </div>
+            <div class="attendance-mark-modal-actions">
+                <button type="button" class="admin-panel-btn admin-panel-btn-outline" onclick="closeRequestWfhModal()">Cancel</button>
+                <button type="submit" class="admin-panel-btn admin-panel-btn-primary">Submit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openRequestLeaveModal() {
+    document.getElementById('requestLeaveDate').value = '{{ today_iso }}';
+    document.getElementById('requestLeaveReason').value = '';
+    document.getElementById('requestLeaveModalBackdrop').hidden = false;
+}
+function closeRequestLeaveModal() {
+    document.getElementById('requestLeaveModalBackdrop').hidden = true;
+}
+function openRequestWfhModal() {
+    document.getElementById('requestWfhDate').value = '{{ today_iso }}';
+    document.getElementById('requestWfhReason').value = '';
+    document.getElementById('requestWfhModalBackdrop').hidden = false;
+}
+function closeRequestWfhModal() {
+    document.getElementById('requestWfhModalBackdrop').hidden = true;
+}
+function onMarkModalStatusChange(status) {
+    var leaveField = document.getElementById('markModalLeaveTypeField');
+    var leaveSelect = document.getElementById('markModalLeaveType');
+    leaveField.hidden = status !== 'leave';
+    if (status !== 'leave') leaveSelect.value = '';
+
+    var reasonField = document.getElementById('markModalReasonField');
+    var reasonInput = document.getElementById('markModalReason');
+    reasonField.hidden = status !== 'leave';
+    if (status !== 'leave') reasonInput.value = '';
+
+    var locationField = document.getElementById('markModalWorkLocationField');
+    var locationSelect = document.getElementById('markModalWorkLocation');
+    locationField.hidden = status !== 'present';
+    if (status !== 'present') locationSelect.value = 'office';
+
+    var entryField = document.getElementById('markModalEntryTimeField');
+    var exitField = document.getElementById('markModalExitTimeField');
+    var entryInput = document.getElementById('markModalEntryTime');
+    var exitInput = document.getElementById('markModalExitTime');
+    var showTimes = status === 'present';
+    entryField.hidden = !showTimes;
+    exitField.hidden = !showTimes;
+    if (!showTimes) {
+        entryInput.value = '';
+        exitInput.value = '';
+    } else {
+        // NLCI's standard working hours -- default to these for a fresh
+        // Present mark, but never clobber a time already saved for the day.
+        if (!entryInput.value) entryInput.value = '{{ standard_start_time }}';
+        if (!exitInput.value) exitInput.value = '{{ standard_end_time }}';
+    }
+}
+function openMarkModal(cell) {
+    document.getElementById('markModalTitle').textContent = 'Mark attendance — ' + cell.dataset.date;
+    document.getElementById('markModalDate').value = cell.dataset.date;
+    var statusSelect = document.getElementById('markModalStatus');
+    var leaveSelect = document.getElementById('markModalLeaveType');
+    statusSelect.value = cell.dataset.status || '';
+    leaveSelect.value = cell.dataset.leaveType || '';
+    document.getElementById('markModalReason').value = cell.dataset.reason || '';
+    document.getElementById('markModalWorkLocation').value = cell.dataset.workLocation || 'office';
+    document.getElementById('markModalEntryTime').value = cell.dataset.entryTime || '';
+    document.getElementById('markModalExitTime').value = cell.dataset.exitTime || '';
+    onMarkModalStatusChange(statusSelect.value);
+    document.getElementById('markModalBackdrop').hidden = false;
+}
+function closeMarkModal() {
+    document.getElementById('markModalBackdrop').hidden = true;
+}
+</script>
+{% endif %}
 {% endblock %}

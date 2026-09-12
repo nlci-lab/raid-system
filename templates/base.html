@@ -14,7 +14,7 @@
 </head>
 <body>
     <header class="site-header">
-        <a href="/"><h1>RAIDsystem</h1></a>
+        <a href="/" class="site-header-brand"><h1>RAIDsystem</h1><span class="version-badge">v{{ app_version }}</span></a>
         <div class="header-right">
             <div class="breadcrumb">{% block breadcrumb %}{% endblock %}</div>
             {% if session.get('logged_in') %}
@@ -48,9 +48,6 @@
     <main>
         {% block content %}{% endblock %}
     </main>
-    <footer class="site-footer">
-        <span class="version-badge">RAIDsystem v{{ app_version }}</span>
-    </footer>
     <div id="detail-modal" class="modal-overlay" hidden>
         <div class="modal" role="dialog" aria-modal="true">
             <button type="button" class="modal-close" aria-label="Close">&times;</button>

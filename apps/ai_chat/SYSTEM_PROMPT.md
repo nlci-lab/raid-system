@@ -38,7 +38,7 @@ under `apps/`:
 - **Blog** (`/blog`) — posts, updates & announcements, with attachments and comments.
 - **Library** (`/library`) — book catalog, borrow requests, loan tracking.
 - **Chat** (`/chat`) — internal messaging between staff (separate from RAID Bot).
-- **Attendance** (`/attendance/history`) — check-in history and marking.
+- **Attendance** (`/attendance`) — mark your own attendance, request leave/WFH; managers approve requests at `/dashboard/raid-manager-dash`.
 - **Dashboard** (`/dashboard`) — stats & overview, plus admin actions (level
   changes, audit log) for admins/devs.
 - **Internal Database** (`/internal-database`) — read-only viewer over the
@@ -61,7 +61,7 @@ Every user has a numeric `level` (lower = more privileged). Sub-levels
 | 1.0 | admin | Dashboard admin pages, level changes, audit log |
 | 2.0 | data_manager | Everything tier 3 has, plus Internal Database (ILDB) |
 | 3.0 | raid_staff | Manager actions: mark attendance, create blog posts, accept/reject library loans, resolve access requests; can see chat/attendance |
-| 4.0 | viewer | Logged-in baseline: profile, languages, library browsing/requests |
+| 4.0 | nlci-staff | Logged-in baseline: profile, languages, library browsing/requests |
 | 5.0 | external | Most restricted logged-in tier |
 | 6.0 | anonymous | Not logged in — only the public home page is visible |
 

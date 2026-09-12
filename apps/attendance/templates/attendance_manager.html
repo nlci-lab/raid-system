@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — RAID Manager Dash{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / <a href="{{ url_for('dashboard.index') }}">Dashboard</a> / RAID Manager Dash{% endblock %}
+{% block content %}
+<h2>Today's Team Status — {{ today }}</h2>
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Detail</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in today_status %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ row['user_name'] }}</td>
+            <td>
+                {% if row['status'] == 'present' %}
+                <span class="manager-status-pill manager-status-present">{{ 'WFH' if row['work_location'] == 'wfh' else 'Present' }}</span>
+                {% elif row['status'] == 'absent' %}
+                <span class="manager-status-pill manager-status-absent">LOP</span>
+                {% elif row['status'] == 'leave' %}
+                <span class="manager-status-pill manager-status-leave">Leave</span>
+                {% else %}
+                <span class="manager-status-pill manager-status-unmarked">Unmarked</span>
+                {% endif %}
+            </td>
+            <td>{{ row['leave_type'] or '' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<h2>All Requests — Leave &amp; WFH</h2>
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+        <tr>
+            <th>SlNo</th>
+            <th>Name</th>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Requested At</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for req in all_requests %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ req['user_name'] }}</td>
+            <td>{{ req['date'] }}</td>
+            <td>{{ req['leave_type'] if req['status'] == 'leave' else 'WFH' }}</td>
+            <td>{{ req['reason'] or '—' }}</td>
+            <td>
+                {% set approval = req['approval_status'] or 'approved' %}
+                <span class="manager-approval-pill manager-approval-{{ approval }}">{{ approval|capitalize }}</span>
+            </td>
+            <td>{{ req['marked_at'] }}</td>
+            <td>
+                {% if approval == 'pending' %}
+                <div class="admin-panel-row-actions">
+                    <form method="post" action="{{ url_for('attendance.approve_request', record_id=req['id']) }}">
+                        <button type="submit" class="admin-panel-btn admin-panel-btn-primary admin-panel-btn-sm">Approve</button>
+                    </form>
+                    <form method="post" action="{{ url_for('attendance.reject_request', record_id=req['id']) }}">
+                        <button type="submit" class="admin-panel-btn admin-panel-btn-danger admin-panel-btn-sm">Reject</button>
+                    </form>
+                </div>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

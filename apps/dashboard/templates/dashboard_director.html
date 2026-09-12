@@ -32,6 +32,10 @@
             <span class="dashboard-nav-icon">📚</span>
             <span class="dashboard-nav-label">RAID Librarian Dash</span>
         </a>
+        <a class="dashboard-nav-item" href="{{ url_for('ai_chat.dashboard_page') }}">
+            <span class="dashboard-nav-icon">🤖</span>
+            <span class="dashboard-nav-label">RAID Bot Dash</span>
+        </a>
         {% if is_admin %}
         <a class="dashboard-nav-item" href="{{ url_for('dashboard.audit_log') }}">
             <span class="dashboard-nav-icon">🧾</span>

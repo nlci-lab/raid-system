@@ -56,5 +56,46 @@
             <div class="modal-actions"></div>
         </div>
     </div>
+    {% if ai_bot_enabled and session.get('logged_in') and nav_current_level is defined and nav_current_level is not none and nav_current_level != 6 %}
+    <div class="ai-bot-widget" id="aiBotWidget">
+        <button type="button" class="ai-bot-fab" id="aiBotFab" aria-label="Open RAID Bot">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"></path></svg>
+        </button>
+        <div class="ai-bot-panel">
+            <div class="ai-bot-header">
+                <div class="ai-bot-header-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"></path></svg>
+                    RAID Bot
+                </div>
+                <div class="ai-bot-header-actions">
+                    <button type="button" class="ai-bot-icon-btn" id="aiBotNewChatBtn" title="New chat" aria-label="New chat">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+                    </button>
+                    <button type="button" class="ai-bot-icon-btn" id="aiBotCloseBtn" title="Close" aria-label="Close">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="ai-bot-scroll" id="aiBotScroll">
+                <div class="ai-bot-empty" id="aiBotEmpty">
+                    <div class="ai-bot-empty-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"></path></svg>
+                    </div>
+                    <div class="ai-bot-empty-sub">Ask RAID Bot anything about RAIDsystem. Runs locally via Ollama — nothing leaves this machine.</div>
+                </div>
+                <div class="ai-bot-messages" id="aiBotMessages" aria-live="polite"></div>
+            </div>
+            <div class="ai-bot-composer">
+                <form class="ai-bot-form" id="aiBotForm">
+                    <textarea id="aiBotInput" class="ai-bot-input" placeholder="Message RAID Bot" rows="1"></textarea>
+                    <button type="submit" class="ai-bot-send-btn" id="aiBotSendBtn" disabled aria-label="Send message">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/ai_chat_widget.js') }}" defer></script>
+    {% endif %}
 </body>
 </html>

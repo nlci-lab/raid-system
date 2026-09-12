@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}RAIDsystem — RAID Bot Dash{% endblock %}
+{% block breadcrumb %}<a href="/">Home</a> / <a href="{{ url_for('dashboard.index') }}">Dashboard</a> / RAID Bot Dash{% endblock %}
+{% block content %}
+<div class="admin-panel">
+
+<section class="portal-section">
+    <h2 class="portal-section-title">Status</h2>
+    <p>
+        RAID Bot is currently
+        <strong>{{ 'ON' if enabled else 'OFF' }}</strong>
+        for every user.
+        {% if models_error %}
+        <br>Ollama looks unreachable at <code>{{ ollama_api_url }}</code>: {{ models_error }}
+        {% else %}
+        <br>Ollama is reachable at <code>{{ ollama_api_url }}</code> — {{ available_models|length }} model(s) installed.
+        {% endif %}
+    </p>
+</section>
+
+<section class="portal-section">
+    <h2 class="portal-section-title">Configuration</h2>
+    <form method="post" action="{{ url_for('ai_chat.save_config') }}" class="ai-bot-dash-form">
+        <label class="ai-bot-dash-toggle">
+            <input type="checkbox" name="enabled" {% if enabled %}checked{% endif %}>
+            RAID Bot enabled (unchecking turns it off for every user immediately)
+        </label>
+
+        <label for="modelName">Model</label>
+        {% if available_models %}
+        <select name="model_name" id="modelName">
+            {% for m in available_models %}
+            <option value="{{ m }}" {% if m == model_name %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+        </select>
+        {% else %}
+        <input type="text" name="model_name" id="modelName" value="{{ model_name }}" placeholder="{{ default_model_name }}">
+        {% endif %}
+
+        <label for="ollamaUrl">Ollama API URL</label>
+        <input type="text" name="ollama_api_url" id="ollamaUrl" value="{{ ollama_api_url }}" placeholder="{{ default_ollama_api_url }}">
+
+        <h3 class="ai-bot-dash-subheading">Generation Options</h3>
+
+        <div class="ai-bot-dash-grid">
+            <div>
+                <label for="temperature">Temperature</label>
+                <input type="number" step="0.05" min="0" max="2" name="temperature" id="temperature"
+                       value="{{ llm_options.temperature }}" placeholder="{{ default_temperature }}">
+                <p class="ai-bot-dash-hint">Randomness. Lower = more focused/deterministic, higher = more creative.</p>
+            </div>
+            <div>
+                <label for="topP">Top P</label>
+                <input type="number" step="0.05" min="0" max="1" name="top_p" id="topP"
+                       value="{{ llm_options.top_p }}" placeholder="{{ default_top_p }}">
+                <p class="ai-bot-dash-hint">Nucleus sampling cutoff. Lower = narrower word choices.</p>
+            </div>
+            <div>
+                <label for="topK">Top K</label>
+                <input type="number" step="1" min="1" name="top_k" id="topK"
+                       value="{{ llm_options.top_k }}" placeholder="{{ default_top_k }}">
+                <p class="ai-bot-dash-hint">Only sample from the top K most likely next words.</p>
+            </div>
+            <div>
+                <label for="repeatPenalty">Repeat Penalty</label>
+                <input type="number" step="0.05" min="0" name="repeat_penalty" id="repeatPenalty"
+                       value="{{ llm_options.repeat_penalty }}" placeholder="{{ default_repeat_penalty }}">
+                <p class="ai-bot-dash-hint">Higher = less likely to repeat itself.</p>
+            </div>
+            <div>
+                <label for="numPredict">Max Response Tokens</label>
+                <input type="number" step="1" name="num_predict" id="numPredict"
+                       value="{{ llm_options.num_predict }}" placeholder="{{ default_num_predict }}">
+                <p class="ai-bot-dash-hint">Caps reply length. -1 = no limit.</p>
+            </div>
+        </div>
+
+        <div class="admin-panel-actions">
+            <button type="submit" class="admin-panel-btn admin-panel-btn-primary">Save Configuration</button>
+        </div>
+    </form>
+</section>
+
+<section class="portal-section">
+    <h2 class="portal-section-title">System Prompt</h2>
+    <form method="post" action="{{ url_for('ai_chat.save_prompt') }}" class="ai-bot-dash-form">
+        <textarea name="system_prompt" rows="20" class="ai-bot-dash-prompt">{{ system_prompt }}</textarea>
+        <div class="admin-panel-actions">
+            <button type="submit" class="admin-panel-btn admin-panel-btn-primary">Save System Prompt</button>
+        </div>
+    </form>
+</section>
+
+<section class="portal-section">
+    <h2 class="portal-section-title">Knowledge Base (RAG)</h2>
+    <p>
+        RAID Bot searches this index for relevant content before answering, grounding replies in the
+        real codebase, the internal Guide, blog posts, and the library catalog instead of only the
+        system prompt above.
+        {% if rag_status.built_at %}
+        Last built <strong>{{ rag_status.built_at }}</strong> — <strong>{{ rag_status.total }}</strong> chunks
+        ({% for src, n in rag_status.counts.items() %}{{ src }}: {{ n }}{{ ", " if not loop.last else "" }}{% endfor %}).
+        {% else %}
+        Not built yet — RAID Bot will answer from the system prompt alone until you build it.
+        {% endif %}
+    </p>
+    <p class="ai-bot-dash-note">
+        Note: the Guide is normally admin-only, but is included here — any RAID Bot user can surface
+        Guide content through a question. Rebuilding re-embeds everything from scratch and can take a
+        minute or two.
+    </p>
+    <form method="post" action="{{ url_for('ai_chat.rebuild_rag_index') }}">
+        <div class="admin-panel-actions">
+            <button type="submit" class="admin-panel-btn admin-panel-btn-outline">Rebuild Index</button>
+        </div>
+    </form>
+</section>
+
+<section class="portal-section">
+    <h2 class="portal-section-title">Test It</h2>
+    <p>Use the RAID Bot bubble in the bottom-right corner of any page to try out a saved change right away.</p>
+</section>
+
+</div>
+{% endblock %}

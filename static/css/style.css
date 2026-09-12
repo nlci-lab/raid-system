@@ -924,7 +924,6 @@ body:has(main .full-width-page) main {
 .tile-dashboard { --tile-bg: #eef0ff; --tile-accent: #3730a3; }
 .tile-internal-db { --tile-bg: #f9f1f1; --tile-accent: #9f1239; }
 .tile-chat { --tile-bg: #f0f4ff; --tile-accent: #3b5bdb; }
-.tile-ai-chat { --tile-bg: #f1f5f9; --tile-accent: #4338ca; }
 .tile-guide { --tile-bg: #f5f3ff; --tile-accent: #5b21b6; }
 .tile-report-archive { --tile-bg: #f4f6f1; --tile-accent: #3f6212; }
 
@@ -2776,5 +2775,432 @@ body:has(main .chat-messages-area) main {
         width: auto;
         white-space: nowrap;
     }
+}
+
+/* RAID Bot floating widget — global bubble + panel, injected by base.html
+   on every page for logged-in staff (tier <= raid_staff), replacing the
+   old dedicated /ai-chat page. Deliberately self-contained/dark, same
+   ChatGPT-ish look the old page had, scaled down to a corner widget. */
+.ai-bot-widget {
+    --ai-bot-bg: #ffffff;
+    --ai-bot-text: #0d0d0d;
+    --ai-bot-muted: #8e8ea0;
+    --ai-bot-border: #e5e5e5;
+    --ai-bot-bubble-bg: #f4f4f4;
+    --ai-bot-accent: #111111;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 500;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.ai-bot-fab {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: var(--ai-bot-accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s ease;
+}
+
+.ai-bot-fab:hover {
+    transform: scale(1.06);
+}
+
+.ai-bot-widget.open .ai-bot-fab {
+    display: none;
+}
+
+.ai-bot-panel {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 360px;
+    height: 520px;
+    max-height: calc(100vh - 40px);
+    background: var(--ai-bot-bg);
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+}
+
+.ai-bot-widget.open .ai-bot-panel {
+    display: flex;
+}
+
+.ai-bot-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--ai-bot-accent);
+    color: #fff;
+}
+
+.ai-bot-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.ai-bot-header-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.ai-bot-icon-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0.85;
+}
+
+.ai-bot-icon-btn:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.ai-bot-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    background: var(--ai-bot-bg);
+}
+
+.ai-bot-empty {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    padding: 0 20px;
+    color: var(--ai-bot-muted);
+}
+
+.ai-bot-empty-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--ai-bot-accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-bot-empty-sub {
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+
+.ai-bot-messages {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.ai-bot-msg {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.ai-bot-msg-user {
+    justify-content: flex-end;
+}
+
+.ai-bot-msg-avatar {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: var(--ai-bot-accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-bot-msg-avatar-error {
+    background: #dc2626;
+}
+
+.ai-bot-msg-content {
+    flex: 1;
+    min-width: 0;
+    padding-top: 2px;
+    color: var(--ai-bot-text);
+    font-size: 0.88em;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+/* Rendered-markdown children (see ai_chat_widget.js's renderMarkdown) --
+   marked.js emits real <p>/<ul>/<pre> elements now, so this resets their
+   default margins for a compact chat bubble instead of pre-wrap-ing raw text. */
+.ai-bot-msg-content p {
+    margin: 0 0 8px;
+}
+
+.ai-bot-msg-content p:last-child {
+    margin-bottom: 0;
+}
+
+.ai-bot-msg-content ul,
+.ai-bot-msg-content ol {
+    margin: 4px 0 8px;
+    padding-left: 20px;
+}
+
+.ai-bot-msg-content li {
+    margin-bottom: 2px;
+}
+
+.ai-bot-msg-content code {
+    background: rgba(0, 0, 0, 0.06);
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+.ai-bot-msg-content pre {
+    background: rgba(0, 0, 0, 0.06);
+    padding: 8px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.85em;
+    margin: 0 0 8px;
+}
+
+.ai-bot-msg-content pre code {
+    background: none;
+    padding: 0;
+}
+
+.ai-bot-msg-content a {
+    color: var(--ai-bot-accent);
+}
+
+.ai-bot-msg-error-text {
+    color: #dc2626;
+}
+
+.ai-bot-msg-bubble {
+    max-width: 80%;
+    padding: 8px 12px;
+    border-radius: 14px;
+    background: var(--ai-bot-bubble-bg);
+    color: var(--ai-bot-text);
+    font-size: 0.88em;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.ai-bot-loading {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    background: var(--ai-bot-muted);
+    border-radius: 50%;
+    animation: ai-bot-pulse 1s infinite;
+    margin-right: 3px;
+}
+
+.ai-bot-loading:nth-child(2) { animation-delay: 0.15s; }
+.ai-bot-loading:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes ai-bot-pulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 1; }
+}
+
+.ai-bot-composer {
+    flex-shrink: 0;
+    padding: 10px;
+    border-top: 1px solid var(--ai-bot-border);
+}
+
+.ai-bot-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    padding: 6px 6px 6px 12px;
+    border: 1px solid var(--ai-bot-border);
+    border-radius: 20px;
+    background: var(--ai-bot-bg);
+}
+
+.ai-bot-form:focus-within {
+    border-color: #c9c9c9;
+}
+
+.ai-bot-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    resize: none;
+    background: transparent;
+    color: var(--ai-bot-text);
+    font-family: inherit;
+    font-size: 0.88em;
+    line-height: 1.4;
+    max-height: 100px;
+    padding: 6px 0;
+}
+
+.ai-bot-input::placeholder {
+    color: var(--ai-bot-muted);
+}
+
+.ai-bot-send-btn {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: var(--ai-bot-accent);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s ease;
+}
+
+.ai-bot-send-btn:hover:not(:disabled) {
+    opacity: 0.85;
+}
+
+.ai-bot-send-btn:disabled {
+    background: var(--ai-bot-border);
+    color: var(--ai-bot-muted);
+    cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+    .ai-bot-widget {
+        right: 12px;
+        bottom: 12px;
+    }
+
+    .ai-bot-panel {
+        width: calc(100vw - 24px);
+        height: calc(100vh - 100px);
+    }
+}
+
+/* RAID Bot Dash (/dashboard/raid-bot-dash) config forms */
+.ai-bot-dash-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 520px;
+}
+
+.ai-bot-dash-form label {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: 6px;
+}
+
+.ai-bot-dash-form select,
+.ai-bot-dash-form input[type="text"] {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9em;
+}
+
+.ai-bot-dash-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.ai-bot-dash-prompt {
+    max-width: none;
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 0.85em;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.ai-bot-dash-note {
+    font-size: 0.85em;
+    color: var(--muted);
+    max-width: 640px;
+}
+
+.ai-bot-dash-subheading {
+    margin: 12px 0 4px;
+    font-size: 0.9em;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.ai-bot-dash-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    max-width: 720px;
+}
+
+.ai-bot-dash-grid label {
+    margin-top: 0;
+}
+
+.ai-bot-dash-grid input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9em;
+}
+
+.ai-bot-dash-hint {
+    margin: 4px 0 0;
+    font-size: 0.75em;
+    color: var(--muted);
+    line-height: 1.3;
 }
 

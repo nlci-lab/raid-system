@@ -6,6 +6,7 @@ from flask import Flask, flash, jsonify, redirect, render_template, request, ses
 
 from apps.access import access
 from apps.ai_chat import ai_chat
+from apps.ai_chat import is_bot_enabled as _ai_chat_is_bot_enabled
 from apps.attendance import attendance
 from apps.auth import auth
 from apps.blog import blog
@@ -28,6 +29,14 @@ APP_VERSION = (Path(__file__).parent / "VERSION").read_text().strip()
 @app.context_processor
 def inject_app_version():
     return {"app_version": APP_VERSION}
+
+
+@app.context_processor
+def inject_ai_bot_enabled():
+    """Global RAID Bot on/off switch (set at /dashboard/raid-bot-dash) --
+    checked here so base.html can hide the floating widget entirely when
+    off, on top of send_message() itself refusing to respond either way."""
+    return {"ai_bot_enabled": _ai_chat_is_bot_enabled()}
 
 app.register_blueprint(auth)
 app.register_blueprint(library)

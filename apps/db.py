@@ -23,6 +23,7 @@ ATTENDANCE_DB = DB_DIR / "attendance.db"
 BLOG_DB = DB_DIR / "blog.db"
 CHAT_DB = DB_DIR / "chat.db"
 ILDB_DB = DB_DIR / "ildb.db"
+AI_CHAT_DB = DB_DIR / "ai_chat.db"  # RAID Bot's own admin-tunable config (model, Ollama URL, enabled flag)
 
 # The base `users` table itself. Every other module (auth, library,
 # dashboard, blog, access, ai_chat, attendance, audit) reads it,

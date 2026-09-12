@@ -26,8 +26,17 @@ guide = Blueprint("guide", __name__, template_folder="templates")
 #   - Any machine with neither (G:\ not mounted, rclone not synced yet):
 #     falls back to the same local sibling path, which may just be
 #     empty/missing — _chapters() below already handles that (404).
+#
+# Four .parents, not three: apps/guide/__init__.py -> apps/ -> core/ (the
+# app folder itself, pure codebase only) -> raid_system/ (the container,
+# sibling of core/) — matching where db/, blogs/, guide/ etc. actually
+# live on both local dev and production (2026-09-12: moved production's
+# guide/ out of core/'s equivalent app-root folder to be a proper sibling
+# at /root/, same convention as local's layout, instead of nested inside
+# the app folder where it happened to still work before this fix but
+# wasn't actually "pure code only" in core/'s sense).
 _GDRIVE_GUIDE_DIR = Path("G:/Shared drives/Research And Information Department(NLCI)/RAID-system-configs/guide")
-_LOCAL_GUIDE_DIR = Path(__file__).resolve().parent.parent.parent / "guide"
+_LOCAL_GUIDE_DIR = Path(__file__).resolve().parent.parent.parent.parent / "guide"
 GUIDE_DIR = _GDRIVE_GUIDE_DIR if _GDRIVE_GUIDE_DIR.exists() else _LOCAL_GUIDE_DIR
 CHAPTER_RE = re.compile(r"^(\d{2})-([A-Za-z0-9-]+)\.md$")
 LINK_RE = re.compile(r"\]\((\d{2}-[A-Za-z0-9-]+)\.md\)")

@@ -2,12 +2,12 @@
 
 Visual identity reference for raid-system (dashboard hub, ILDB, planner, India map, and all other modules).
 
-## Blue, Maroon, Indigo
+## Gold, Charcoal, Grey
 
-| Color  | Hex       |
-|--------|-----------|
-| Blue   | `#408ec6` |
-| Maroon | `#7a2048` |
-| Indigo | `#1e2761` |
+| Color    | Hex       |
+|----------|-----------|
+| Gold     | `#ef9d10` |
+| Charcoal | `#3b4d61` |
+| Grey     | `#6b7b8c` |
 
-Navy/indigo as the dominant base — headers, nav, dashboard hub, tables (ILDB rollups, planner, report listings). Maroon as a restrained accent — active nav items, status badges, highlighted/selected states (e.g. India map drill-down).
+Charcoal/grey as the neutral base — headers, nav, dashboard hub, tables (ILDB rollups, planner, report listings). Gold as a restrained accent — buttons, active states, highlights.

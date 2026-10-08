@@ -35,7 +35,7 @@ DEFAULT_NUM_PREDICT = -1  # -1 = no limit (Ollama's own default)
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
 ANTHROPIC_DEFAULT_MAX_TOKENS = 1024
-CLAUDE_MODEL_CHOICE = "claude-haiku-4-5-20251001"  # offered in the dashboard dropdown
+CLAUDE_MODEL_CHOICE = "claude-haiku-5-5"  # offered in the dashboard dropdown
 
 SYSTEM_PROMPT_PATH = Path(__file__).parent / "SYSTEM_PROMPT.md"
 
@@ -311,7 +311,6 @@ def _stream_claude(model_name, system_messages, messages):
         "max_tokens": max_tokens,
         "system": "\n\n".join(m["content"] for m in system_messages),
         "messages": [{"role": m["role"], "content": m["content"]} for m in messages],
-        "temperature": min(opts["temperature"], 1.0),
         "stream": True,
     }
     req = urllib.request.Request(

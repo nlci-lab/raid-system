@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 import urllib.request
 import urllib.error
@@ -27,6 +28,14 @@ DEFAULT_TOP_P = 0.9
 DEFAULT_TOP_K = 40
 DEFAULT_REPEAT_PENALTY = 1.1
 DEFAULT_NUM_PREDICT = -1  # -1 = no limit (Ollama's own default)
+
+# Claude models (any model name starting with "claude") go to Anthropic's
+# Messages API instead of Ollama. The key comes from the server's
+# ANTHROPIC_API_KEY environment variable -- never stored in ai_chat.db or git.
+ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_VERSION = "2023-06-01"
+ANTHROPIC_DEFAULT_MAX_TOKENS = 1024
+CLAUDE_MODEL_CHOICE = "claude-haiku-4-5-20251001"  # offered in the dashboard dropdown
 
 SYSTEM_PROMPT_PATH = Path(__file__).parent / "SYSTEM_PROMPT.md"
 
@@ -68,6 +77,10 @@ def _set_setting(key, value):
 
 def get_model_name():
     return _get_setting("model_name", DEFAULT_MODEL_NAME)
+
+
+def is_claude_model(name):
+    return name.lower().startswith("claude")
 
 
 def get_ollama_api_url():
@@ -225,8 +238,12 @@ def send_message():
                     ),
                 })
 
+        model_name = get_model_name()
+        if is_claude_model(model_name):
+            return _stream_claude(model_name, system_messages, messages)
+
         payload = {
-            "model": get_model_name(),
+            "model": model_name,
             "messages": system_messages + messages,
             "stream": True,
             "options": get_llm_options(),
@@ -280,6 +297,68 @@ def send_message():
         return jsonify({"error": f"Internal error: {str(e)}"}), 500
 
 
+def _stream_claude(model_name, system_messages, messages):
+    """Same contract as the Ollama path in send_message(): connect first so
+    failures come back as JSON errors, then stream plain-text chunks."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY is not set on the server."}), 503
+
+    opts = get_llm_options()
+    max_tokens = opts["num_predict"] if opts["num_predict"] > 0 else ANTHROPIC_DEFAULT_MAX_TOKENS
+    payload = {
+        "model": model_name,
+        "max_tokens": max_tokens,
+        "system": "\n\n".join(m["content"] for m in system_messages),
+        "messages": [{"role": m["role"], "content": m["content"]} for m in messages],
+        "temperature": min(opts["temperature"], 1.0),
+        "stream": True,
+    }
+    req = urllib.request.Request(
+        ANTHROPIC_API_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": ANTHROPIC_VERSION,
+        },
+        method="POST",
+    )
+    try:
+        response = urllib.request.urlopen(req, timeout=120)
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", "replace")[:300]
+        return jsonify({"error": f"Claude API error (HTTP {e.code}): {detail}"}), 503
+    except urllib.error.URLError:
+        return jsonify({"error": "Cannot reach the Claude API."}), 503
+
+    def generate():
+        try:
+            for raw_line in response:
+                line = raw_line.decode("utf-8").strip()
+                if not line.startswith("data:"):
+                    continue
+                try:
+                    event = json.loads(line[5:].strip())
+                except json.JSONDecodeError:
+                    continue
+                if event.get("type") == "content_block_delta":
+                    text = event.get("delta", {}).get("text", "")
+                    if text:
+                        yield text
+                elif event.get("type") == "error":
+                    yield f"\n\n[Error while streaming: {event.get('error', {}).get('message', 'unknown')}]"
+                    break
+                elif event.get("type") == "message_stop":
+                    break
+        except Exception as e:
+            yield f"\n\n[Error while streaming: {e}]"
+        finally:
+            response.close()
+
+    return Response(stream_with_context(generate()), mimetype="text/plain")
+
+
 def _display_time(iso_str):
     """Stored as full ISO; shown as a short 'Sep 12, 6:03 PM' -- same
     convention as apps/chat's and apps/library's own _display_time."""
@@ -296,6 +375,8 @@ def _display_time(iso_str):
 @admin_required
 def dashboard_page():
     models, models_error = _list_ollama_models()
+    if models and CLAUDE_MODEL_CHOICE not in models:
+        models.append(CLAUDE_MODEL_CHOICE)
     rag_status = rag.index_status()
     rag_status["built_at"] = _display_time(rag_status["built_at"])
     return render_template(
